@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/* Design tokens. Kept small and semantic so the dark theme stays consistent
+   and Japanese text is legible (generous font, comfortable line height). */
+@theme {
+  --font-sans: 'Noto Sans JP', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-surface-0: oklch(0.17 0.005 285); /* app background */
+  --color-surface-1: oklch(0.21 0.006 285); /* panels / bars */
+  --color-surface-2: oklch(0.26 0.007 285); /* raised elements, AI bubble */
+
+  --color-accent-400: oklch(0.78 0.12 195);
+  --color-accent-500: oklch(0.7 0.13 195);
+  --color-accent-600: oklch(0.62 0.13 195);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface-0 text-zinc-100 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* Japanese readability: roomy line height for kana/kanji mix. */
+  .jp-text {
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+  }
+}

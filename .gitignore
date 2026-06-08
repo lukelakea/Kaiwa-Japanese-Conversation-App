@@ -1,0 +1,44 @@
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+.venv/
+backend/.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Editor / OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Claude Code ----
+# settings.local.json is machine-specific; launch.json is personal dev config.
+# .claude/ can grow to include hooks and session data — keep it local.
+.claude/
+
+# ---- Certificates / credentials (safety net) ----
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# ---- Logs ----
+*.log
+npm-debug.log*

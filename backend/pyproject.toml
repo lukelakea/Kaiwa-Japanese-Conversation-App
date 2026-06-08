@@ -1,0 +1,32 @@
+[project]
+name = "kaiwa-backend"
+version = "0.1.0"
+description = "Kaiwa backend — FastAPI server owning the LLM provider abstraction."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.28",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.9"]
+
+# This is an application, not a distributable package: uv manages the
+# environment but does not try to build/install the project itself.
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are called in argument defaults by
+# design; this is the idiomatic pattern, not a mutable-default bug.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path"]
