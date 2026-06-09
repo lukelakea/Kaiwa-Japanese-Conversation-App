@@ -1,12 +1,15 @@
 # STATE.md — Kaiwa project snapshot
 
-**Last updated:** end of session 4 (Phase 4).  
-**Current phase:** Phase 4 complete. Next phase: Phase 5 (Voice — STT + TTS).  
+**Last updated:** end of session 5 (Phase 5).  
+**Current phase:** Phase 5 complete. All phases of v1.0 are now done.  
 Read `PROJECT_BRIEF.md` for the full product vision and phase plan.
 
-> **Heads-up:** if a backend was already running from a previous phase, restart
-> it (`npm run dev` / `npm run dev:backend`) so the new `/api/scenario/generate`
-> route is registered. A fresh start picks it up automatically.
+> **Heads-up for Phase 5:** restart the backend after pulling so the new
+> `/api/stt` and `/api/tts` routes are registered, and run `npm run setup`
+> once to pull the `faster-whisper` dependency into the uv environment.
+> VOICEVOX must be running on `http://localhost:50021` before TTS is used.
+> The faster-whisper model loads on first STT request (logged to the backend
+> console); subsequent requests reuse the cached model.
 
 ---
 
@@ -399,9 +402,54 @@ All deliverables built and verified in the browser:
 
 ---
 
-## What is NOT implemented (upcoming phases)
+### Phase 5 — Voice ✓
 
-- **Phase 5:** STT via faster-whisper, TTS via VOICEVOX (confirm engine first).
+All deliverables built, linted clean, and verified in the browser (frontend snapshot):
+
+- **STT input via faster-whisper (brief §11).** A mic button in the message input
+  (left of the textarea) lets the user record voice. Clicking it starts capturing
+  from the default microphone; clicking again stops and sends the audio to
+  `POST /api/stt`. The backend saves the upload to a temp file, runs faster-whisper
+  with `language="ja"`, and returns the transcript. The transcript populates the
+  textarea so the user can review/edit before sending. The textarea is disabled
+  during recording and processing with a Japanese-language placeholder
+  (録音中…/文字起こし中…). Microphone permission errors surface inline. The
+  faster-whisper model loads lazily on first use and is cached for the process
+  lifetime; a startup log line announces when it is ready.
+- **TTS output via VOICEVOX (brief §11).** A small speaker icon appears below
+  every completed assistant reply. Clicking it calls `POST /api/tts`, which calls
+  VOICEVOX's two-step API (`/audio_query` then `/synthesis`) and returns raw WAV.
+  The frontend plays the WAV via `new Audio(blobURL)`. While loading: a small
+  CSS spinner. While playing: a stop icon (clicking stops playback). Blob URLs are
+  revoked on playback end to avoid leaks. The button is absent while the AI reply
+  is still streaming; it appears only on complete messages.
+- **Both input modes simultaneously.** Text typing and voice input co-exist:
+  the mic toggles between idle/recording/processing; typing is unaffected while
+  the mic is idle and is disabled only during active recording/processing.
+- **Graceful degradation.** If VOICEVOX is not running, the TTS button silently
+  fails (no UI crash). If the whisper model fails to load, the endpoint returns
+  a 503 with a human-readable message.
+
+New backend files:
+- `backend/app/api/stt.py` — `POST /api/stt` (multipart audio → transcript JSON)
+- `backend/app/api/tts.py` — `POST /api/tts` (JSON text → WAV bytes)
+
+New frontend files:
+- `frontend/src/hooks/useAudioRecorder.ts` — mic recording + STT lifecycle hook
+
+New/modified:
+- `backend/app/config.py` — 5 new KAIWA_VOICEVOX_* and KAIWA_WHISPER_* settings
+- `backend/pyproject.toml` — `faster-whisper>=1.1` dependency added
+- `backend/.env.example` — voice config vars documented
+- `frontend/src/api/client.ts` — `transcribe()` and `synthesize()` added
+- `frontend/src/components/ui/icons.tsx` — MicIcon, MicOffIcon, SpeakerIcon, SpeakerOffIcon
+- `frontend/src/components/chat/MessageInput.tsx` — mic button + recorder integration
+- `frontend/src/components/chat/MessageBubble.tsx` — TtsButton on assistant replies
+
+---
+
+## What is NOT implemented (post-1.0)
+
 - **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
 
 ---
@@ -420,5 +468,10 @@ All backend settings read from `backend/.env` (or environment), prefixed `KAIWA_
 | `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Sampling temperature (feedback pass — cool for stable JSON) |
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled dictionary (relative to backend root) |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
+| `KAIWA_VOICEVOX_BASE_URL` | `http://localhost:50021` | VOICEVOX local HTTP API (Phase 5) |
+| `KAIWA_VOICEVOX_SPEAKER` | `1` | VOICEVOX speaker ID (1 = 四国めたん ノーマル) |
+| `KAIWA_WHISPER_MODEL` | `base` | faster-whisper model size (tiny/base/small/medium/large-v3) |
+| `KAIWA_WHISPER_DEVICE` | `cuda` | faster-whisper device (`cuda` or `cpu`) |
+| `KAIWA_WHISPER_COMPUTE_TYPE` | `float16` | CTranslate2 compute type (`float16` for GPU, `int8` for CPU) |
 
 Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in `frontend/.env.local`.
