@@ -28,6 +28,11 @@ class GenerationOptions:
 
     model: str
     temperature: float = 0.7
+    # Ask the provider to return a single valid JSON object rather than free
+    # text. Used by structured passes (e.g. feedback, Phase 3) where the reply
+    # must be machine-parseable. Providers map this to their own JSON/structured
+    # mode; it stays provider-neutral here.
+    json_mode: bool = False
 
 
 class LLMError(RuntimeError):

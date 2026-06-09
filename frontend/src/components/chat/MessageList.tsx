@@ -9,6 +9,7 @@ interface MessageListProps {
   showFurigana: boolean;
   showTranslation: boolean;
   onRequestTranslation: (id: string) => void;
+  onRetryFeedback: (id: string) => void;
 }
 
 export function MessageList({
@@ -16,6 +17,7 @@ export function MessageList({
   showFurigana,
   showTranslation,
   onRequestTranslation,
+  onRetryFeedback,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +39,7 @@ export function MessageList({
           showFurigana={showFurigana}
           showTranslation={showTranslation}
           onRequestTranslation={onRequestTranslation}
+          onRetryFeedback={onRetryFeedback}
         />
       ))}
       <div ref={bottomRef} />
