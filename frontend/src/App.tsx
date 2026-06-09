@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { MessageInput } from './components/chat/MessageInput';
 import { MessageList } from './components/chat/MessageList';
+import { ModeSelector } from './components/chat/ModeSelector';
 import { Header } from './components/layout/Header';
 import { ReadingControls } from './components/reading/ReadingControls';
 import { SavedPanel } from './components/reading/SavedPanel';
@@ -13,52 +14,110 @@ import { SavedVocabContext } from './context/SavedVocabContext';
 import { useConversation } from './hooks/useConversation';
 import { useSavedGrammar } from './hooks/useSavedGrammar';
 import { useSavedVocab } from './hooks/useSavedVocab';
-import type { ConversationSettings } from './types/conversation';
+import type { ConversationMode, ConversationSettings, Scenario } from './types/conversation';
 
 export default function App() {
   const [settings, setSettings] = useState<ConversationSettings>(DEFAULT_SETTINGS);
-  // Reading aids are opt-in and off by default (brief §6) — clean Japanese first.
   const [showFurigana, setShowFurigana] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
 
-  const { messages, status, error, send, stop, reset, requestTranslation, retryFeedback } =
-    useConversation();
+  // null = mode picker is shown; set once the user starts a conversation.
+  const [activeMode, setActiveMode] = useState<ConversationMode | null>(null);
+  const [activeScenario, setActiveScenario] = useState<Scenario | null>(null);
+
+  const {
+    messages,
+    status,
+    error,
+    send,
+    startScenario,
+    stop,
+    reset,
+    requestTranslation,
+    retryFeedback,
+  } = useConversation();
   const savedVocab = useSavedVocab();
   const savedGrammar = useSavedGrammar();
+
+  const handleReset = useCallback(() => {
+    reset();
+    setActiveMode(null);
+    setActiveScenario(null);
+  }, [reset]);
+
+  const handleStartFreeTalk = useCallback(() => {
+    setActiveMode('free_talk');
+    setActiveScenario(null);
+  }, []);
+
+  const handleStartScenario = useCallback(
+    async (scenario: Scenario, mode: ConversationMode) => {
+      setActiveMode(mode);
+      setActiveScenario(scenario);
+      await startScenario(scenario, settings, mode);
+    },
+    [settings, startScenario],
+  );
+
+  const conversationActive = activeMode !== null;
 
   return (
     <SavedVocabContext.Provider value={savedVocab}>
       <SavedGrammarContext.Provider value={savedGrammar}>
         <div className="flex h-dvh flex-col bg-surface-0">
-          <Header onReset={reset} canReset={messages.length > 0} />
+          <Header
+            onReset={handleReset}
+            canReset={conversationActive}
+            scenarioTitle={activeScenario?.title_ja}
+          />
 
-          <div className="border-b border-white/10 bg-surface-1 px-4 py-2">
-            <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-2">
-              <SettingsBar settings={settings} onChange={setSettings} />
-              <ReadingControls
-                showFurigana={showFurigana}
-                onToggleFurigana={() => setShowFurigana((v) => !v)}
-                showTranslation={showTranslation}
-                onToggleTranslation={() => setShowTranslation((v) => !v)}
-                onOpenSaved={() => setSavedOpen(true)}
-              />
+          {conversationActive && (
+            <div className="border-b border-white/10 bg-surface-1 px-4 py-2">
+              <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-2">
+                <SettingsBar settings={settings} onChange={setSettings} />
+                <ReadingControls
+                  showFurigana={showFurigana}
+                  onToggleFurigana={() => setShowFurigana((v) => !v)}
+                  showTranslation={showTranslation}
+                  onToggleTranslation={() => setShowTranslation((v) => !v)}
+                  onOpenSaved={() => setSavedOpen(true)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          <main className="flex-1 overflow-y-auto">
-            <MessageList
-              messages={messages}
-              showFurigana={showFurigana}
-              showTranslation={showTranslation}
-              onRequestTranslation={requestTranslation}
-              onRetryFeedback={(id) => retryFeedback(id, settings)}
-            />
-          </main>
+          {conversationActive ? (
+            <main className="flex-1 overflow-y-auto">
+              <MessageList
+                messages={messages}
+                showFurigana={showFurigana}
+                showTranslation={showTranslation}
+                onRequestTranslation={requestTranslation}
+                onRetryFeedback={(id) => retryFeedback(id, settings)}
+              />
+            </main>
+          ) : (
+            <main className="flex-1 overflow-y-auto">
+              <ModeSelector
+                settings={settings}
+                onStartFreeTalk={handleStartFreeTalk}
+                onStartScenario={(scenario, mode) => void handleStartScenario(scenario, mode)}
+              />
+            </main>
+          )}
 
           {error && <ErrorBanner message={error} />}
 
-          <MessageInput status={status} onSend={(text) => send(text, settings)} onStop={stop} />
+          {conversationActive && (
+            <MessageInput
+              status={status}
+              onSend={(text) =>
+                void send(text, settings, activeMode ?? 'free_talk', activeScenario ?? undefined)
+              }
+              onStop={stop}
+            />
+          )}
 
           <SavedPanel open={savedOpen} onClose={() => setSavedOpen(false)} />
         </div>

@@ -1,7 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { ApiError, requestFeedback, streamChat, tokenize, translate } from '../api/client';
-import type { ConversationSettings, Message, WireMessage } from '../types/conversation';
+import type {
+  ConversationMode,
+  ConversationSettings,
+  Message,
+  Scenario,
+  WireMessage,
+} from '../types/conversation';
 
 export type ConversationStatus = 'idle' | 'streaming' | 'error';
 
@@ -99,7 +105,12 @@ export function useConversation() {
   );
 
   const send = useCallback(
-    async (text: string, settings: ConversationSettings) => {
+    async (
+      text: string,
+      settings: ConversationSettings,
+      mode: ConversationMode = 'free_talk',
+      scenario?: Scenario,
+    ) => {
       const content = text.trim();
       if (!content || status === 'streaming') return;
 
@@ -129,7 +140,7 @@ export function useConversation() {
 
       try {
         await streamChat(
-          { messages: history, settings, mode: 'free_talk' },
+          { messages: history, settings, mode, scenario },
           {
             signal: controller.signal,
             onDelta: (delta) => {
@@ -161,6 +172,54 @@ export function useConversation() {
     [messages, status, appendDelta, dropIfEmpty, tokenizeMessage, generateFeedback],
   );
 
+  // Trigger the AI's opening message for a scenario (brief §5). Called once
+  // when a scenario is started — the messages list is empty at this point so
+  // the AI receives only the system prompt and opens the scene in character.
+  const startScenario = useCallback(
+    async (scenario: Scenario, settings: ConversationSettings, mode: ConversationMode) => {
+      if (status === 'streaming') return;
+
+      const assistantId = nextId();
+      setError(null);
+      setStatus('streaming');
+      setMessages([{ id: assistantId, role: 'assistant', content: '' }]);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let full = '';
+
+      try {
+        await streamChat(
+          { messages: [], settings, mode, scenario },
+          {
+            signal: controller.signal,
+            onDelta: (delta) => {
+              full += delta;
+              appendDelta(assistantId, delta);
+            },
+          },
+        );
+        setStatus('idle');
+        void tokenizeMessage(assistantId, full);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          dropIfEmpty(assistantId);
+          setStatus('idle');
+          void tokenizeMessage(assistantId, full);
+          return;
+        }
+        dropIfEmpty(assistantId);
+        setError(
+          err instanceof ApiError ? err.message : 'Something went wrong starting the scenario.',
+        );
+        setStatus('error');
+      } finally {
+        abortRef.current = null;
+      }
+    },
+    [status, appendDelta, dropIfEmpty, tokenizeMessage],
+  );
+
   // Translate an assistant reply on demand (brief §6 step 3). Stable identity:
   // reads current messages from a ref so toggling translation never re-creates
   // this callback (which would retrigger the effect that calls it).
@@ -190,5 +249,5 @@ export function useConversation() {
     setStatus('idle');
   }, []);
 
-  return { messages, status, error, send, stop, reset, requestTranslation, retryFeedback };
+  return { messages, status, error, send, startScenario, stop, reset, requestTranslation, retryFeedback };
 }

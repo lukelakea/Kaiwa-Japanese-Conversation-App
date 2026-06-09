@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, feedback, reading, translate
+from app.api import chat, feedback, reading, scenario, translate
 from app.config import get_settings
 from app.japanese import Dictionary, Tokenizer
 from app.llm import build_provider
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(reading.router, prefix="/api", tags=["reading"])
     app.include_router(translate.router, prefix="/api", tags=["translate"])
     app.include_router(feedback.router, prefix="/api", tags=["feedback"])
+    app.include_router(scenario.router, prefix="/api/scenario", tags=["scenario"])
 
     @app.get("/api/health", tags=["health"])
     async def health() -> dict[str, str]:

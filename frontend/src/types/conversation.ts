@@ -13,6 +13,15 @@ export type Formality = 'casual' | 'friendly' | 'polite' | 'formal';
 export type Initiative = 'ai_led' | 'balanced' | 'user_led';
 export type ConversationMode = 'free_talk' | 'scenario' | 'generated';
 
+/** A conversation scenario — curated or LLM-generated (brief §5). */
+export interface Scenario {
+  title: string;
+  title_ja: string;
+  description: string;
+  user_role: string;
+  ai_role: string;
+}
+
 export interface ConversationSettings {
   difficulty: Difficulty;
   formality: Formality;
@@ -47,4 +56,5 @@ export interface ChatRequest {
   messages: WireMessage[];
   settings: ConversationSettings;
   mode: ConversationMode;
+  scenario?: Scenario;
 }

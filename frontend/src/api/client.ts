@@ -6,7 +6,7 @@
  * arrive (brief §6 — progressive disclosure).
  */
 
-import type { ChatRequest, ConversationSettings } from '../types/conversation';
+import type { ChatRequest, ConversationSettings, Scenario } from '../types/conversation';
 import type { Feedback } from '../types/feedback';
 import type { LookupResult, Token } from '../types/reading';
 
@@ -119,6 +119,26 @@ export async function requestFeedback(
   });
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
   return (await response.json()) as Feedback;
+}
+
+/**
+ * Generate a scenario from an optional theme (brief §5 — Generated mode).
+ * Uses the LLM with json_mode to produce a structured scenario description.
+ */
+export async function generateScenario(
+  theme: string | null,
+  settings: ConversationSettings,
+  signal?: AbortSignal,
+): Promise<Scenario> {
+  const response = await fetch(`${API_BASE_URL}/api/scenario/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: theme || null, settings }),
+    signal,
+  });
+  if (!response.ok) throw new ApiError(await extractErrorDetail(response));
+  const data = (await response.json()) as { scenario: Scenario };
+  return data.scenario;
 }
 
 export async function checkHealth(): Promise<boolean> {
