@@ -5,8 +5,12 @@ All settings are prefixed with ``KAIWA_`` to avoid collisions. See
 """
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Anchor relative data paths to the backend root (this file is app/config.py).
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
@@ -32,12 +36,25 @@ class Settings(BaseSettings):
     # Default sampling temperature for conversational replies.
     temperature: float = 0.7
 
+    # Translation (brief §6) is a faithful transformation of an already-generated
+    # reply, so it runs cooler than conversation to stay literal and stable.
+    translation_temperature: float = 0.3
+
+    # Reading-aids dictionary (Phase 2), built by scripts/build_dictionaries.py.
+    # Relative paths are resolved against the backend root.
+    dictionary_path: str = "data/dictionary.sqlite"
+
     # Origins permitted by CORS, as a comma-separated string.
     cors_origins: str = "http://localhost:5173"
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def resolved_dictionary_path(self) -> Path:
+        path = Path(self.dictionary_path)
+        return path if path.is_absolute() else _BACKEND_ROOT / path
 
 
 @lru_cache
