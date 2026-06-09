@@ -1,12 +1,12 @@
 # STATE.md — Kaiwa project snapshot
 
-**Last updated:** end of session 3 (Phase 3).  
-**Current phase:** Phase 3 complete. Next phase: Phase 4 (Conversation modes).  
+**Last updated:** end of session 4 (Phase 4).  
+**Current phase:** Phase 4 complete. Next phase: Phase 5 (Voice — STT + TTS).  
 Read `PROJECT_BRIEF.md` for the full product vision and phase plan.
 
 > **Heads-up:** if a backend was already running from a previous phase, restart
-> it (`npm run dev` / `npm run dev:backend`) so the new `/api/feedback` route is
-> registered. A fresh start picks it up automatically.
+> it (`npm run dev` / `npm run dev:backend`) so the new `/api/scenario/generate`
+> route is registered. A fresh start picks it up automatically.
 
 ---
 
@@ -67,7 +67,8 @@ npm run build          # TS type-check + Vite production build
 │       ├── main.py           FastAPI app factory + lifespan (provider init/close)
 │       ├── config.py         Pydantic-settings, KAIWA_* prefix, lru_cache
 │       ├── models/
-│       │   ├── conversation.py   Domain enums + Pydantic request models (API contract)
+│       │   ├── conversation.py   Domain enums + Pydantic models; Phase 4 adds Scenario,
+│       │   │                     GenerateScenarioRequest/Response; ChatRequest gains scenario field
 │       │   ├── reading.py        Phase 2: Token/Furigana, Word/Kanji lookup, Translate models
 │       │   └── feedback.py       Phase 3: FeedbackLabel, FeedbackRequest/Response
 │       ├── llm/
@@ -80,14 +81,17 @@ npm run build          # TS type-check + Vite production build
 │       │   ├── dictionary.py     Read-only SQLite lookup (JMdict words + KANJIDIC2 kanji)
 │       │   └── __init__.py       Re-exports Tokenizer, Dictionary
 │       ├── prompts/
-│       │   ├── system_prompt.py  compose_system_prompt(settings, mode) — all 3 settings → text
+│       │   ├── system_prompt.py  compose_system_prompt(settings, mode, scenario?) — scenario
+│       │   │                     framing injected for scenario/generated modes (Phase 4)
 │       │   ├── translation_prompt.py  TRANSLATION_SYSTEM_PROMPT for the translate pass
-│       │   └── feedback_prompt.py  Phase 3: compose_feedback_prompt + format_feedback_input
+│       │   ├── feedback_prompt.py  Phase 3: compose_feedback_prompt + format_feedback_input
+│       │   └── scenario_prompt.py  Phase 4: GENERATE_SCENARIO_SYSTEM_PROMPT + input composer
 │       └── api/
 │           ├── chat.py           POST /api/chat — peek-first stream, 502 on startup errors
 │           ├── reading.py        POST /api/tokenize, GET /api/lookup (threadpool-dispatched)
 │           ├── translate.py      POST /api/translate — second LLM call, JSON reply, 502 on error
-│           └── feedback.py       POST /api/feedback — parallel critique, json_mode, defensive parse
+│           ├── feedback.py       POST /api/feedback — parallel critique, json_mode, defensive parse
+│           └── scenario.py       POST /api/scenario/generate — Phase 4: LLM-generated scenario
 │   └── data/dictionary.sqlite    Compiled JMdict + KANJIDIC2 (git-ignored, built by script)
 │
 ├── frontend/
@@ -100,30 +104,38 @@ npm run build          # TS type-check + Vite production build
 │   └── src/
 │       ├── main.tsx          Mounts app, imports Noto Sans JP (400/500/700) locally
 │       ├── index.css         Tailwind v4 @theme tokens (surface-0/1/2, accent-400/500/600)
-│       ├── App.tsx           Top-level layout: Header + SettingsBar + MessageList + input
+│       ├── App.tsx           Top-level layout; Phase 4 adds activeMode/activeScenario state,
+│       │                     ModeSelector shown when no mode active, conversation UI when active
 │       ├── types/
-│       │   ├── conversation.ts   TS types mirroring backend models (Message gains tokens/translation/feedback)
+│       │   ├── conversation.ts   TS types mirroring backend models; Phase 4 adds Scenario,
+│       │   │                     ChatRequest gains optional scenario field
 │       │   ├── reading.ts        Phase 2: Token, FuriganaSegment, Word/Kanji entries, SavedWord
 │       │   └── feedback.ts       Phase 3: FeedbackLabel, Feedback, FeedbackStatus, SavedGrammar
 │       ├── config/
-│       │   └── settings.ts   Option metadata arrays + DEFAULT_SETTINGS (data-driven)
+│       │   ├── settings.ts   Option metadata arrays + DEFAULT_SETTINGS (data-driven)
+│       │   └── scenarios.ts  Phase 4: CURATED_SCENARIOS (10 scenarios), CuratedScenario type,
+│       │                     toWireScenario() converter
 │       ├── context/
 │       │   ├── SavedVocabContext.tsx    Shares the saved-vocab store (used deep in the popover)
 │       │   └── SavedGrammarContext.tsx  Shares the saved-grammar store (feedback annotation → panel)
 │       ├── api/
-│       │   └── client.ts     streamChat(), tokenize(), lookup(), translate(), requestFeedback(), checkHealth()
+│       │   └── client.ts     streamChat(), tokenize(), lookup(), translate(), requestFeedback(),
+│       │                     generateScenario(), checkHealth()
 │       ├── hooks/
-│       │   ├── useConversation.ts  History, streaming, send/stop/reset, tokenize + requestTranslation + feedback
+│       │   ├── useConversation.ts  Phase 4: send() gains mode+scenario params; adds startScenario()
+│       │   │                       for AI-first scenario opening (messages:[])
 │       │   ├── useSavedVocab.ts    localStorage-backed saved words (has/save/remove)
 │       │   ├── useSavedGrammar.ts  localStorage-backed saved grammar points (has/save/remove)
 │       │   ├── useTokenLookup.ts   Cached per-token dictionary fetch (process-wide Map)
 │       │   └── useClickOutside.ts  Pointer-down + Escape handler for dropdowns
 │       └── components/
 │           ├── chat/
+│           │   ├── ModeSelector.tsx    Phase 4: full mode-selection flow (mode picker → scenario
+│           │   │                       list/detail or generated setup/preview → start)
 │           │   ├── MessageBubble.tsx   Bubbles; renders TokenizedText + translation + feedback
 │           │   ├── FeedbackAnnotation.tsx  Phase 3: collapsible per-message critique + grammar save
 │           │   ├── MessageList.tsx     Scrolls to bottom; forwards furigana/translation/feedback props
-│           │   ├── EmptyState.tsx      "会話を始めましょう" prompt
+│           │   ├── EmptyState.tsx      "会話を始めましょう" prompt (shown during Free Talk before first message)
 │           │   └── MessageInput.tsx    Auto-grow textarea, IME-safe Enter, send/stop button
 │           ├── reading/
 │           │   ├── TokenizedText.tsx   Renders tokens + furigana; orchestrates the hover popover
@@ -310,6 +322,18 @@ is two concurrent model calls on the same Ollama instance; on the target RTX 509
 that is a non-issue, and the abstraction would let a future provider fan these out
 trivially.
 
+### 7. Scenario opening: AI goes first via empty messages list
+
+**Brief said:** scenarios are framed conversations; didn't specify who opens.
+
+**Decision:** for both `scenario` and `generated` modes, the AI opens the conversation.
+`ChatRequest.messages` now accepts an empty list (removed `min_length=1`). The frontend
+calls `/api/chat` with `messages: []` to trigger the opening; the system prompt's scenario
+section includes "if no prior messages, begin by greeting and setting the scene." The
+alternative (user types first) was considered but rejected: for role-play contexts like
+a hotel check-in or job interview, the AI character (receptionist, interviewer) naturally
+speaks first, and starting cold forces the user into an awkward opener.
+
 ### 6. Structured feedback via `json_mode`, not prompt-and-hope
 
 `GenerationOptions` gained a provider-neutral `json_mode` flag; `OllamaProvider`
@@ -338,14 +362,45 @@ to its own structured-output mode with no feature-code change.
 | **Feedback quality depends on the model** | Acceptable | Correctness/labels are only as good as `gemma3:27b`. The contract (JSON shape, register-awareness) is enforced; the judgement is not. A retry is offered on failure. |
 | **Feedback fires on every user message** | By design (brief §8) | Including trivial ones (e.g. "はい"). The model returns "Looks good" quickly; not gated to avoid a call, since the user expects feedback on each turn. |
 | **Feedback is not re-run when settings change** | Minor | A message is critiqued once against the register active when sent. Changing register later does not re-grade past messages; a manual retry uses the then-current settings. Matches the "settings affect the next turn" model (brief §4). |
+| **Scenario framing persists if settings change mid-conversation** | By design | The scenario (title, description, roles) is passed on every turn; only the difficulty/formality/initiative shift. Changing register mid-scenario adjusts the AI's language level but keeps the role framing intact. Consistent with the "settings affect the next turn" contract. |
+| **Generated scenario quality depends on the model** | Acceptable | `gemma3:27b` reliably produces valid JSON and sensible scenarios. A weak local model may occasionally return malformed JSON (caught defensively, returns 502 + retry). The `title_ja` field occasionally uses non-standard phrasing — acceptable for v1.0. |
 | **JSON wire format is snake_case except `partOfSpeech`** | Resolved | FastAPI emits response models by alias; `WordSense.part_of_speech` carries a `serialization_alias` so it reaches the TS client as `partOfSpeech`. Watch this if adding more multi-word reading fields. |
 | **`sudachidict-core` adds ~69 MB to the venv** | Acceptable | Bundled SudachiPy dictionary. One-time install cost; no runtime download. |
 
 ---
 
+### Phase 4 — Conversation modes ✓
+
+All deliverables built and verified in the browser:
+
+- **Mode selector (brief §5).** Replaces the blank empty state. Before a conversation starts,
+  the user chooses from three modes via a full-screen picker. The settings bar and message
+  input are hidden until a mode is active; "New conversation" resets to the picker.
+- **Curated Scenarios.** Ten hand-written scenarios across five categories (daily-life, work,
+  social, travel, services): restaurant, hotel check-in, job interview, coworker small talk,
+  convenience store, directions, party meeting, doctor visit, izakaya, clothes shopping.
+  Data-driven in `config/scenarios.ts` — adding a new scenario is one object. The picker
+  shows Japanese titles + English hints in a two-column grid; clicking opens a detail card
+  (description, both roles, Start button).
+- **Generated mode.** `POST /api/scenario/generate` takes an optional theme + current
+  settings and returns a JSON scenario via the same `json_mode` pattern as feedback.
+  The frontend shows a theme input, displays the generated scenario for review, and the
+  user confirms before starting. Defensive parsing (brace extraction, ValidationError
+  handling) matches the feedback endpoint.
+- **AI-first scenario opening.** Both scenario modes trigger `startScenario()` in
+  `useConversation`, which calls `/api/chat` with `messages: []`. The system prompt's
+  scenario section instructs the AI to open the scene if no prior messages exist, so it
+  greets and sets the scene naturally in character. Subsequent turns call `/api/chat` with
+  `mode` and `scenario` forwarded in every request so the framing persists throughout.
+- **Scenario badge in header.** When a scenario is active, the scenario's Japanese title
+  appears as a small accent-coloured pill in the header, giving context without clutter.
+- **Settings bar hidden on mode picker.** The settings/reading controls only appear once a
+  conversation is active. The mode picker uses full-screen layout, uncluttered.
+
+---
+
 ## What is NOT implemented (upcoming phases)
 
-- **Phase 4:** Curated scenario mode (data-driven list), generated scenario mode.
 - **Phase 5:** STT via faster-whisper, TTS via VOICEVOX (confirm engine first).
 - **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
 

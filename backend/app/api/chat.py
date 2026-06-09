@@ -34,7 +34,7 @@ async def chat(
     provider: LLMProvider = Depends(get_provider),
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse | JSONResponse:
-    system_prompt = compose_system_prompt(payload.settings, payload.mode)
+    system_prompt = compose_system_prompt(payload.settings, payload.mode, payload.scenario)
     messages = [
         LLMMessage(role="system", content=system_prompt),
         *[LLMMessage(role=m.role.value, content=m.content) for m in payload.messages],

@@ -7,12 +7,15 @@ pipelines per setting (brief §4 closing note). Changing a setting mid-session
 simply produces a different prompt on the next turn.
 """
 
+from __future__ import annotations
+
 from app.models.conversation import (
     ConversationMode,
     ConversationSettings,
     Difficulty,
     Formality,
     Initiative,
+    Scenario,
 )
 
 _BASE = """\
@@ -87,13 +90,10 @@ _INITIATIVE: dict[Initiative, str] = {
     ),
 }
 
-_MODE: dict[ConversationMode, str] = {
-    ConversationMode.free_talk: (
-        "This is open-ended free conversation with no set scenario. Chat about "
-        "whatever comes up, like two people getting to know each other."
-    ),
-    # Scenario / generated framing is added in Phase 4.
-}
+_FREE_TALK_MODE = (
+    "This is open-ended free conversation with no set scenario. Chat about "
+    "whatever comes up, like two people getting to know each other."
+)
 
 _MEMORY = (
     "Track what has already been discussed in this conversation. Do not repeat "
@@ -102,17 +102,34 @@ _MEMORY = (
 )
 
 
+def _scenario_section(scenario: Scenario) -> str:
+    return (
+        f"You are playing the role of {scenario.ai_role}.\n"
+        f"Situation: {scenario.description}\n"
+        f"Your conversation partner is playing: {scenario.user_role}.\n"
+        f"If this is the opening of the conversation (no prior messages), begin by "
+        f"greeting your partner and naturally setting the scene in character — one "
+        f"to three sentences. Otherwise, respond naturally to the ongoing conversation."
+    )
+
+
 def compose_system_prompt(
     settings: ConversationSettings,
     mode: ConversationMode,
+    scenario: Scenario | None = None,
 ) -> str:
     """Assemble the full system prompt for a turn from settings and mode."""
+    if mode in (ConversationMode.scenario, ConversationMode.generated) and scenario:
+        mode_text = _scenario_section(scenario)
+    else:
+        mode_text = _FREE_TALK_MODE
+
     sections = [
         _BASE,
         f"Difficulty — {_DIFFICULTY[settings.difficulty]}",
         f"Register — {_FORMALITY[settings.formality]}",
         f"Initiative — {_INITIATIVE[settings.initiative]}",
-        f"Conversation — {_MODE.get(mode, _MODE[ConversationMode.free_talk])}",
+        f"Conversation — {mode_text}",
         f"Continuity — {_MEMORY}",
     ]
     return "\n\n".join(sections)

@@ -58,6 +58,16 @@ class ConversationSettings(BaseModel):
     initiative: Initiative = Initiative.balanced
 
 
+class Scenario(BaseModel):
+    """A conversation scenario — either curated or LLM-generated (brief §5)."""
+
+    title: str
+    title_ja: str
+    description: str
+    user_role: str
+    ai_role: str
+
+
 class Message(BaseModel):
     role: Role
     content: str
@@ -68,8 +78,22 @@ class ChatRequest(BaseModel):
 
     The full history is sent each turn (brief §9 — history-in-context, no RAG).
     Settings are sent every turn so changes take effect on subsequent turns.
+    For scenario modes, `messages` may be empty on the first turn — the AI
+    opens the conversation based on the scenario framing in the system prompt.
     """
 
-    messages: list[Message] = Field(..., min_length=1)
+    messages: list[Message] = Field(default_factory=list)
     settings: ConversationSettings = ConversationSettings()
     mode: ConversationMode = ConversationMode.free_talk
+    scenario: Scenario | None = None
+
+
+class GenerateScenarioRequest(BaseModel):
+    """Request to generate a scenario on the fly (brief §5 — Generated mode)."""
+
+    theme: str | None = None
+    settings: ConversationSettings = ConversationSettings()
+
+
+class GenerateScenarioResponse(BaseModel):
+    scenario: Scenario
