@@ -6,6 +6,8 @@ import { ToggleButton } from '../ui/ToggleButton';
 interface ReadingControlsProps {
   showFurigana: boolean;
   onToggleFurigana: () => void;
+  showRomaji: boolean;
+  onToggleRomaji: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
   onOpenSaved: () => void;
@@ -19,6 +21,8 @@ interface ReadingControlsProps {
 export function ReadingControls({
   showFurigana,
   onToggleFurigana,
+  showRomaji,
+  onToggleRomaji,
   showTranslation,
   onToggleTranslation,
   onOpenSaved,
@@ -34,6 +38,12 @@ export function ReadingControls({
         sublabel="ふりがな"
         active={showFurigana}
         onToggle={onToggleFurigana}
+      />
+      <ToggleButton
+        label="Romaji"
+        sublabel="ローマ字"
+        active={showRomaji}
+        onToggle={onToggleRomaji}
       />
       <ToggleButton
         label="Translate"

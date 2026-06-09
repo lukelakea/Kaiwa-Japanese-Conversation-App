@@ -249,6 +249,13 @@ export function useConversation() {
     setStatus('idle');
   }, []);
 
+  const restore = useCallback((msgs: Message[]) => {
+    abortRef.current?.abort();
+    setMessages(msgs);
+    setError(null);
+    setStatus('idle');
+  }, []);
+
   return {
     messages,
     status,
@@ -257,6 +264,7 @@ export function useConversation() {
     startScenario,
     stop,
     reset,
+    restore,
     requestTranslation,
     retryFeedback,
   };

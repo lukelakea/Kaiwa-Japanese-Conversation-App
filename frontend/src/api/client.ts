@@ -164,18 +164,43 @@ export async function transcribe(audio: Blob, signal?: AbortSignal): Promise<str
   return data.text;
 }
 
+export interface SpeakerOption {
+  id: number;
+  name: string;
+}
+
+/**
+ * Fetch available VOICEVOX speakers from the backend. Returns an empty array
+ * if VOICEVOX is not running (502) so callers can degrade gracefully.
+ */
+export async function fetchSpeakers(signal?: AbortSignal): Promise<SpeakerOption[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tts/speakers`, { signal });
+    if (!response.ok) return [];
+    return (await response.json()) as SpeakerOption[];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Synthesise Japanese text to speech via VOICEVOX (Phase 5).
  * Returns raw WAV bytes that the caller plays via the Web Audio API.
- * VOICEVOX must be running locally before this is called.
+ * Pass speakerId to override the server default; omit to use the server config.
  */
-export async function synthesize(text: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+export async function synthesize(
+  text: string,
+  speakerId?: number | null,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer> {
   let response: Response;
+  const body: Record<string, unknown> = { text };
+  if (speakerId != null) body.speaker_id = speakerId;
   try {
     response = await fetch(`${API_BASE_URL}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (cause) {

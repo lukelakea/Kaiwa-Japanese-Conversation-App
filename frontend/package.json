@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "^5.1.0",
+    "motion": "^12.40.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "wanakana": "^5.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

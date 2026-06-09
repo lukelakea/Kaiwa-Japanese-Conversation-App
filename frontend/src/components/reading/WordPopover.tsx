@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 
+import { popVariants } from '../../config/motion';
 import { useSavedVocabContext } from '../../context/SavedVocabContext';
 import { useTokenLookup } from '../../hooks/useTokenLookup';
 import type { KanjiEntry, SavedWord, Token, WordEntry } from '../../types/reading';
@@ -39,16 +41,20 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
     saved ? remove(token.lemma) : save(buildSavedWord(token, result?.words[0]));
 
   return createPortal(
-    <div
+    <motion.div
       role="dialog"
+      variants={popVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
-      className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-white/10 bg-surface-2 p-3 text-sm shadow-2xl shadow-black/50"
-      style={style}
+      className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-border bg-surface-3 p-3 text-sm shadow-lg"
+      style={{ ...style, transformOrigin: flipUp ? 'bottom' : 'top' }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="jp-text text-lg text-zinc-100">{token.surface}</span>
+          <span className="jp-text text-lg text-accent-400">{token.surface}</span>
           {token.reading && token.reading !== token.surface && (
             <span className="jp-text ml-2 text-zinc-400">{token.reading}</span>
           )}
@@ -61,7 +67,7 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
           className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
             saved
               ? 'border-accent-500/40 bg-accent-600/20 text-accent-400'
-              : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-zinc-200'
+              : 'border-border text-zinc-400 hover:border-border-strong hover:text-zinc-200'
           }`}
         >
           <BookmarkIcon className="h-3.5 w-3.5" filled={saved} />
@@ -72,7 +78,7 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
       {loading && <p className="text-zinc-500">Looking up…</p>}
       {error && <p className="text-zinc-500">Couldn’t load the dictionary.</p>}
       {result && !loading && <DictionaryBody words={result.words} kanji={result.kanji} />}
-    </div>,
+    </motion.div>,
     document.body,
   );
 }
