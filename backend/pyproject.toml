@@ -14,6 +14,11 @@ dependencies = [
     # JS tokenizer shipped to the browser. sudachidict-core is the bundled dict.
     "sudachipy>=0.6.8",
     "sudachidict-core>=20240409",
+    # Required for FastAPI file upload endpoints (STT audio upload).
+    "python-multipart>=0.0.9",
+    # STT (Phase 5): faster-whisper wraps CTranslate2 Whisper with GPU support.
+    # Requires ffmpeg on PATH to decode browser audio (WebM/Opus).
+    "faster-whisper>=1.1",
 ]
 
 [dependency-groups]

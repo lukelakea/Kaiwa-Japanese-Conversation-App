@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     # Origins permitted by CORS, as a comma-separated string.
     cors_origins: str = "http://localhost:5173"
 
+    # --- Voice (Phase 5) ---
+    # VOICEVOX local HTTP API. Speaker 1 = 四国めたん ノーマル; see VOICEVOX
+    # for the full speaker list. VOICEVOX must be running before TTS is used.
+    voicevox_base_url: str = "http://localhost:50021"
+    voicevox_speaker: int = 2
+
+    # faster-whisper model size and target device. "base" is fast and accurate
+    # enough for conversational Japanese; swap to "large-v3" for best accuracy.
+    # compute_type "float16" is optimal for CUDA; use "int8" for CPU.
+    whisper_model: str = "base"
+    whisper_device: str = "cuda"
+    whisper_compute_type: str = "float16"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

@@ -141,6 +141,51 @@ export async function generateScenario(
   return data.scenario;
 }
 
+/**
+ * Transcribe an audio blob to Japanese text via faster-whisper (Phase 5).
+ * The browser sends WebM/Opus; the backend saves it to a temp file and runs STT.
+ */
+export async function transcribe(audio: Blob, signal?: AbortSignal): Promise<string> {
+  const formData = new FormData();
+  formData.append('audio', audio, 'recording.webm');
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/stt`, {
+      method: 'POST',
+      body: formData,
+      signal,
+    });
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
+    throw new ApiError('Could not reach the Kaiwa server. Is the backend running?');
+  }
+  if (!response.ok) throw new ApiError(await extractErrorDetail(response));
+  const data = (await response.json()) as { text: string };
+  return data.text;
+}
+
+/**
+ * Synthesise Japanese text to speech via VOICEVOX (Phase 5).
+ * Returns raw WAV bytes that the caller plays via the Web Audio API.
+ * VOICEVOX must be running locally before this is called.
+ */
+export async function synthesize(text: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
+    throw new ApiError('Could not reach the Kaiwa server. Is the backend running?');
+  }
+  if (!response.ok) throw new ApiError(await extractErrorDetail(response));
+  return response.arrayBuffer();
+}
+
 export async function checkHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/health`);
