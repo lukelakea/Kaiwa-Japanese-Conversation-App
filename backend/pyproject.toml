@@ -9,6 +9,11 @@ dependencies = [
     "httpx>=0.28",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
+    # Japanese morphological analysis (Phase 2). SudachiPy tokenizes replies into
+    # words with dictionary-form lemmas and readings, server-side, in Python — no
+    # JS tokenizer shipped to the browser. sudachidict-core is the bundled dict.
+    "sudachipy>=0.6.8",
+    "sudachidict-core>=20240409",
 ]
 
 [dependency-groups]

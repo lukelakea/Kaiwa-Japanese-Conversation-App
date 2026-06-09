@@ -4,9 +4,9 @@ A local-first Japanese conversation-practice app. Hold a natural back-and-forth
 in Japanese with an AI partner running entirely on your own machine (via
 [Ollama](https://ollama.com)) — no subscription, no required sign-up, no cloud.
 
-> **Status:** Phases 0–1 complete — a working, settings-aware text conversation.
-> Reading aids, feedback, scenario modes, and voice are planned (see
-> `PROJECT_BRIEF`).
+> **Status:** Phases 0–2 complete — a settings-aware text conversation with
+> reading aids (furigana, hover dictionary, translation, vocab save). Feedback,
+> scenario modes, and voice are planned (see `PROJECT_BRIEF`).
 
 ## Features (so far)
 
@@ -15,6 +15,13 @@ in Japanese with an AI partner running entirely on your own machine (via
   - **Difficulty** — Beginner · Intermediate · Advanced · Near-Fluent
   - **Register** — Casual · Friendly · Polite · Formal
   - **Initiative** — AI-led · Balanced · User-led
+- **Reading aids** (opt-in, off by default):
+  - **Furigana** over kanji, generated deterministically with SudachiPy.
+  - **Hover-lookup** — word definitions (JMdict) and per-kanji readings/meanings
+    (KANJIDIC2), served locally, no LLM call.
+  - **Translation** of any reply to English (a separate, on-demand LLM call).
+  - **Quick vocab save** — one-click save of a word to your browser, with a
+    saved-words panel.
 - Dark, minimal UI tuned for Japanese legibility (Noto Sans JP).
 - Clean LLM **provider abstraction** — a second provider (e.g. Anthropic) can be
   added later without touching feature code.
@@ -24,6 +31,9 @@ in Japanese with an AI partner running entirely on your own machine (via
 - **Frontend:** React + Vite + TypeScript + Tailwind CSS v4
 - **Backend:** Python + FastAPI (managed with [uv](https://docs.astral.sh/uv/))
 - **LLM:** Ollama (local). Default model `gemma3:27b`.
+- **Japanese tooling:** [SudachiPy](https://github.com/WorksApplications/SudachiPy)
+  (tokenisation + furigana), [JMdict](https://github.com/scriptin/jmdict-simplified)
+  + KANJIDIC2 (dictionary), compiled into a local SQLite file.
 
 ## Prerequisites
 
@@ -52,9 +62,15 @@ ollama pull gemma3:27b
 From the repo root (PowerShell):
 
 ```powershell
-# Install root, frontend, and backend dependencies
+# Install all dependencies AND build the reading-aids dictionary
 npm run setup
 ```
+
+`npm run setup` also downloads JMdict + KANJIDIC2 and compiles them into
+`backend/data/dictionary.sqlite` (a few hundred MB are downloaded once; the file
+is git-ignored). To rebuild it later — e.g. for a newer dictionary release — run
+`npm run setup:dict`. The app runs without it, but hover-lookup will be empty
+until it exists.
 
 Optionally create env files from the examples to override defaults:
 
@@ -88,6 +104,8 @@ out of the box; see `backend/.env.example` for the full list. Common overrides:
 | `KAIWA_OLLAMA_MODEL` | `gemma3:27b` | Ollama model used for replies |
 | `KAIWA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `KAIWA_TEMPERATURE` | `0.7` | Sampling temperature |
+| `KAIWA_TRANSLATION_TEMPERATURE` | `0.3` | Temperature for the translation pass |
+| `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled JMdict + KANJIDIC2 DB |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) |
 
 Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in
@@ -97,7 +115,8 @@ Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in
 
 | Command (repo root) | Does |
 |---------------------|------|
-| `npm run setup` | Install all dependencies |
+| `npm run setup` | Install all dependencies + build the dictionary |
+| `npm run setup:dict` | (Re)build the reading-aids dictionary only |
 | `npm run dev` | Run backend + frontend |
 | `npm run build` | Build the frontend |
 | `npm run lint` | Lint frontend (ESLint) + backend (ruff) |

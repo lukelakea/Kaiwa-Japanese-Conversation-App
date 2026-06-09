@@ -36,3 +36,29 @@ export function StopIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BookmarkIcon({ className, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill={filled ? 'currentColor' : 'none'}
+      aria-hidden
+      className={className}
+    >
+      <path
+        d="M4 2.5h8a.5.5 0 0 1 .5.5v10.5L8 11l-4.5 2.5V3a.5.5 0 0 1 .5-.5z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}

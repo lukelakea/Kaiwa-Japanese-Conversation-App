@@ -6,9 +6,17 @@ import { MessageBubble } from './MessageBubble';
 
 interface MessageListProps {
   messages: Message[];
+  showFurigana: boolean;
+  showTranslation: boolean;
+  onRequestTranslation: (id: string) => void;
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({
+  messages,
+  showFurigana,
+  showTranslation,
+  onRequestTranslation,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Keep the latest message in view as tokens stream in.
@@ -23,7 +31,13 @@ export function MessageList({ messages }: MessageListProps) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
+        <MessageBubble
+          key={message.id}
+          message={message}
+          showFurigana={showFurigana}
+          showTranslation={showTranslation}
+          onRequestTranslation={onRequestTranslation}
+        />
       ))}
       <div ref={bottomRef} />
     </div>

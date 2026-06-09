@@ -29,4 +29,18 @@
     line-height: 1.9;
     letter-spacing: 0.01em;
   }
+
+  /* Furigana: small, tinted readings sitting above the kanji core. The roomy
+     .jp-text line height leaves room for them without crowding lines. */
+  .jp-ruby ruby {
+    ruby-position: over;
+  }
+
+  .jp-ruby rt {
+    font-size: 0.5em;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-accent-400);
+    user-select: none;
+  }
 }
