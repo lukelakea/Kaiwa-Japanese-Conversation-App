@@ -3,6 +3,7 @@
  * (backend/app/models/conversation.py) — keep the two in sync.
  */
 
+import type { Feedback, FeedbackStatus } from './feedback';
 import type { Token } from './reading';
 
 export type Role = 'user' | 'assistant';
@@ -31,6 +32,9 @@ export interface Message {
   /** English translation of an assistant reply, fetched on demand (brief §6). */
   translation?: string;
   translationStatus?: TranslationStatus;
+  /** Critique of a user message, fetched in parallel with the reply (brief §8). */
+  feedback?: Feedback;
+  feedbackStatus?: FeedbackStatus;
 }
 
 /** The wire-format message the backend expects (no id). */

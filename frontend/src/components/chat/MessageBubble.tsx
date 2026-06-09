@@ -2,12 +2,14 @@ import { useEffect } from 'react';
 
 import type { Message } from '../../types/conversation';
 import { TokenizedText } from '../reading/TokenizedText';
+import { FeedbackAnnotation } from './FeedbackAnnotation';
 
 interface MessageBubbleProps {
   message: Message;
   showFurigana: boolean;
   showTranslation: boolean;
   onRequestTranslation: (id: string) => void;
+  onRetryFeedback: (id: string) => void;
 }
 
 function TypingDots() {
@@ -29,6 +31,7 @@ export function MessageBubble({
   showFurigana,
   showTranslation,
   onRequestTranslation,
+  onRetryFeedback,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isPending = message.role === 'assistant' && message.content === '';
@@ -77,6 +80,10 @@ export function MessageBubble({
 
       {!isUser && !isPending && showTranslation && (
         <Translation message={message} onRetry={() => onRequestTranslation(message.id)} />
+      )}
+
+      {isUser && (message.feedback || message.feedbackStatus) && (
+        <FeedbackAnnotation message={message} onRetry={() => onRetryFeedback(message.id)} />
       )}
     </div>
   );

@@ -1,8 +1,12 @@
 # STATE.md — Kaiwa project snapshot
 
-**Last updated:** end of session 2 (Phase 2).  
-**Current phase:** Phase 2 complete. Next phase: Phase 3 (Feedback system).  
+**Last updated:** end of session 3 (Phase 3).  
+**Current phase:** Phase 3 complete. Next phase: Phase 4 (Conversation modes).  
 Read `PROJECT_BRIEF.md` for the full product vision and phase plan.
+
+> **Heads-up:** if a backend was already running from a previous phase, restart
+> it (`npm run dev` / `npm run dev:backend`) so the new `/api/feedback` route is
+> registered. A fresh start picks it up automatically.
 
 ---
 
@@ -64,9 +68,10 @@ npm run build          # TS type-check + Vite production build
 │       ├── config.py         Pydantic-settings, KAIWA_* prefix, lru_cache
 │       ├── models/
 │       │   ├── conversation.py   Domain enums + Pydantic request models (API contract)
-│       │   └── reading.py        Phase 2: Token/Furigana, Word/Kanji lookup, Translate models
+│       │   ├── reading.py        Phase 2: Token/Furigana, Word/Kanji lookup, Translate models
+│       │   └── feedback.py       Phase 3: FeedbackLabel, FeedbackRequest/Response
 │       ├── llm/
-│       │   ├── base.py           LLMProvider ABC, LLMMessage, GenerationOptions, LLMError
+│       │   ├── base.py           LLMProvider ABC, LLMMessage, GenerationOptions (json_mode), LLMError
 │       │   ├── ollama_provider.py  Streams /api/chat, error translation, timeout config
 │       │   ├── factory.py        build_provider(settings) — only place that names providers
 │       │   └── __init__.py       Re-exports the public surface
@@ -76,11 +81,13 @@ npm run build          # TS type-check + Vite production build
 │       │   └── __init__.py       Re-exports Tokenizer, Dictionary
 │       ├── prompts/
 │       │   ├── system_prompt.py  compose_system_prompt(settings, mode) — all 3 settings → text
-│       │   └── translation_prompt.py  TRANSLATION_SYSTEM_PROMPT for the translate pass
+│       │   ├── translation_prompt.py  TRANSLATION_SYSTEM_PROMPT for the translate pass
+│       │   └── feedback_prompt.py  Phase 3: compose_feedback_prompt + format_feedback_input
 │       └── api/
 │           ├── chat.py           POST /api/chat — peek-first stream, 502 on startup errors
 │           ├── reading.py        POST /api/tokenize, GET /api/lookup (threadpool-dispatched)
-│           └── translate.py      POST /api/translate — second LLM call, JSON reply, 502 on error
+│           ├── translate.py      POST /api/translate — second LLM call, JSON reply, 502 on error
+│           └── feedback.py       POST /api/feedback — parallel critique, json_mode, defensive parse
 │   └── data/dictionary.sqlite    Compiled JMdict + KANJIDIC2 (git-ignored, built by script)
 │
 ├── frontend/
@@ -95,37 +102,41 @@ npm run build          # TS type-check + Vite production build
 │       ├── index.css         Tailwind v4 @theme tokens (surface-0/1/2, accent-400/500/600)
 │       ├── App.tsx           Top-level layout: Header + SettingsBar + MessageList + input
 │       ├── types/
-│       │   ├── conversation.ts   TS types mirroring backend models (Message gains tokens/translation)
-│       │   └── reading.ts        Phase 2: Token, FuriganaSegment, Word/Kanji entries, SavedWord
+│       │   ├── conversation.ts   TS types mirroring backend models (Message gains tokens/translation/feedback)
+│       │   ├── reading.ts        Phase 2: Token, FuriganaSegment, Word/Kanji entries, SavedWord
+│       │   └── feedback.ts       Phase 3: FeedbackLabel, Feedback, FeedbackStatus, SavedGrammar
 │       ├── config/
 │       │   └── settings.ts   Option metadata arrays + DEFAULT_SETTINGS (data-driven)
 │       ├── context/
-│       │   └── SavedVocabContext.tsx  Shares the saved-vocab store (used deep in the popover)
+│       │   ├── SavedVocabContext.tsx    Shares the saved-vocab store (used deep in the popover)
+│       │   └── SavedGrammarContext.tsx  Shares the saved-grammar store (feedback annotation → panel)
 │       ├── api/
-│       │   └── client.ts     streamChat(), tokenize(), lookup(), translate(), checkHealth()
+│       │   └── client.ts     streamChat(), tokenize(), lookup(), translate(), requestFeedback(), checkHealth()
 │       ├── hooks/
-│       │   ├── useConversation.ts  History, streaming, send/stop/reset, tokenize + requestTranslation
+│       │   ├── useConversation.ts  History, streaming, send/stop/reset, tokenize + requestTranslation + feedback
 │       │   ├── useSavedVocab.ts    localStorage-backed saved words (has/save/remove)
+│       │   ├── useSavedGrammar.ts  localStorage-backed saved grammar points (has/save/remove)
 │       │   ├── useTokenLookup.ts   Cached per-token dictionary fetch (process-wide Map)
 │       │   └── useClickOutside.ts  Pointer-down + Escape handler for dropdowns
 │       └── components/
 │           ├── chat/
-│           │   ├── MessageBubble.tsx   Bubbles; renders TokenizedText + translation block
-│           │   ├── MessageList.tsx     Scrolls to bottom; forwards furigana/translation props
+│           │   ├── MessageBubble.tsx   Bubbles; renders TokenizedText + translation + feedback
+│           │   ├── FeedbackAnnotation.tsx  Phase 3: collapsible per-message critique + grammar save
+│           │   ├── MessageList.tsx     Scrolls to bottom; forwards furigana/translation/feedback props
 │           │   ├── EmptyState.tsx      "会話を始めましょう" prompt
 │           │   └── MessageInput.tsx    Auto-grow textarea, IME-safe Enter, send/stop button
 │           ├── reading/
 │           │   ├── TokenizedText.tsx   Renders tokens + furigana; orchestrates the hover popover
 │           │   ├── WordPopover.tsx     Portal dictionary card (words + kanji) with save button
-│           │   ├── ReadingControls.tsx Furigana/Translate toggles + Saved-words button
-│           │   └── SavedVocabPanel.tsx Slide-over list of saved words
+│           │   ├── ReadingControls.tsx Furigana/Translate toggles + Saved button (words + grammar count)
+│           │   └── SavedPanel.tsx      Slide-over with Words / Grammar tabs (replaces SavedVocabPanel)
 │           ├── settings/
 │           │   ├── SettingDropdown.tsx  Generic dropdown, generic over value type T
 │           │   └── SettingsBar.tsx      Three dropdowns composed; onChange spreads new value
 │           ├── layout/
 │           │   └── Header.tsx          Title + "New conversation" button (disabled if empty)
 │           └── ui/
-│               ├── icons.tsx     Chevron/Send/Stop + Bookmark/Close (inline SVG, currentColor)
+│               ├── icons.tsx     Chevron/Send/Stop + Bookmark/Close/Chat/Check/ChevronRight (inline SVG)
 │               ├── ToggleButton.tsx  Pill toggle used by the reading-aid switches
 │               └── ErrorBanner.tsx  role="alert" strip above the input
 │
@@ -197,6 +208,36 @@ live `gemma3:27b` and the compiled dictionary:
   (lemma/surface/reading/glosses), with a slide-over saved-words panel. Store is
   shared via `SavedVocabContext`. Data model kept clean for future export/sync.
 
+### Phase 3 — Feedback system ✓
+
+All deliverables built and verified end-to-end in the browser against a live
+`gemma3:27b`:
+
+- **Per-message feedback (brief §8).** `POST /api/feedback` critiques the user's
+  most recent message. It runs as a **separate LLM call fired in parallel with
+  the chat reply** (verified: both POSTs leave together) — the critique depends
+  only on the user's text and the turn it replies to, never on the assistant's
+  answer, so there is nothing to serialise. The user's message receives an
+  **inline, collapsible annotation**, collapsed by default so the conversation
+  reads naturally.
+- **Acceptable vs. correction.** When the message is already natural the
+  affordance is a muted green "Looks good"; otherwise an amber "Suggestion" with
+  **soft labels** (`grammar` / `vocabulary` / `phrasing` / `naturalness`, often
+  more than one). Expanding shows the **English explanation** and the **corrected
+  Japanese** (brief §8).
+- **Register-aware.** The request carries the current settings; the prompt judges
+  against the register the learner is *practising*, so casual input is not
+  "corrected" up to です・ます (verified).
+- **Structured output.** `GenerationOptions.json_mode` maps to Ollama's
+  `format: "json"`; the endpoint validates defensively (brace extraction, label
+  filtering, correction cleared when acceptable) into `FeedbackResponse`, and
+  returns a clean 502 on an unreachable model or unparseable output.
+- **Grammar-point save (brief §7).** When a correction is labelled `grammar`, the
+  expanded annotation offers "Save grammar point" → `localStorage`
+  (original sentence + correction + explanation). Stored via `useSavedGrammar` /
+  `SavedGrammarContext`, surfaced in the **Saved** slide-over's new **Grammar**
+  tab (the panel is now tabbed: Words / Grammar). The "Saved" button counts both.
+
 ---
 
 ## Decisions that deviate from the brief
@@ -253,6 +294,33 @@ Originally exported from `config/settings.ts` for potential generic rendering. R
 
 The brief did not specify temperature. 0.7 was chosen as a standard conversational default and confirmed to work well with `gemma3:27b`. Configurable via `KAIWA_TEMPERATURE`.
 
+### 5. Feedback runs in parallel with the reply (brief §8 asked us to decide)
+
+**Brief said:** "Decide whether to run [feedback] in parallel with the reply
+call or sequentially, and explain the tradeoff."
+
+**Decision: parallel.** `useConversation.send` fires `/api/feedback` and the chat
+stream at the same time (verified in the browser network panel — both POSTs
+leave together). The critique's inputs are fully known the instant the user hits
+send (their message + the turn it replies to); it has **no dependency** on the
+assistant's answer, so serialising would only add the reply's latency to the
+feedback with zero benefit. The two results land independently: the reply streams
+into its bubble, the annotation resolves under the user's message. The only cost
+is two concurrent model calls on the same Ollama instance; on the target RTX 5090
+that is a non-issue, and the abstraction would let a future provider fan these out
+trivially.
+
+### 6. Structured feedback via `json_mode`, not prompt-and-hope
+
+`GenerationOptions` gained a provider-neutral `json_mode` flag; `OllamaProvider`
+maps it to `format: "json"`, which constrains the model to a single valid JSON
+object. This is far more reliable than asking a local model to format itself. The
+endpoint still validates defensively (brace extraction, label filtering against
+the enum, `correction` cleared when `acceptable`) and returns a clean 502 on an
+unreachable model or unparseable output, so the client always gets a typed result
+or a retryable error. The flag is generic — a future Anthropic provider maps it
+to its own structured-output mode with no feature-code change.
+
 ---
 
 ## Known issues, incomplete items, and deferred work
@@ -266,7 +334,10 @@ The brief did not specify temperature. 0.7 was chosen as a standard conversation
 | **eval_models.py combos are hardcoded** | Acceptable | The harness is a dev tool, not production code. Edit the `COMBOS` list to test different models or temperatures. |
 | **Furigana okurigana alignment is heuristic** | Acceptable | Peels matching kana off both ends, then puts the reading over the kanji core. Handles the common cases (食べる, 美味しい); rare mixed-kana words may ruby a kana with the core. Falls back to whole-token ruby. |
 | **Popover above/below flip is heuristic** | Minor | Flips above the token when near the viewport bottom (no live measurement). Fine for the chat layout; could be made measurement-based later. |
-| **Reading aids only on assistant replies** | By design | User messages render plain (no furigana/lookup); per-message *feedback* on user input is Phase 3. |
+| **Reading aids only on assistant replies** | By design | User messages render plain (no furigana/lookup). Feedback (Phase 3) is the per-message critique on user input. |
+| **Feedback quality depends on the model** | Acceptable | Correctness/labels are only as good as `gemma3:27b`. The contract (JSON shape, register-awareness) is enforced; the judgement is not. A retry is offered on failure. |
+| **Feedback fires on every user message** | By design (brief §8) | Including trivial ones (e.g. "はい"). The model returns "Looks good" quickly; not gated to avoid a call, since the user expects feedback on each turn. |
+| **Feedback is not re-run when settings change** | Minor | A message is critiqued once against the register active when sent. Changing register later does not re-grade past messages; a manual retry uses the then-current settings. Matches the "settings affect the next turn" model (brief §4). |
 | **JSON wire format is snake_case except `partOfSpeech`** | Resolved | FastAPI emits response models by alias; `WordSense.part_of_speech` carries a `serialization_alias` so it reaches the TS client as `partOfSpeech`. Watch this if adding more multi-word reading fields. |
 | **`sudachidict-core` adds ~69 MB to the venv** | Acceptable | Bundled SudachiPy dictionary. One-time install cost; no runtime download. |
 
@@ -274,7 +345,6 @@ The brief did not specify temperature. 0.7 was chosen as a standard conversation
 
 ## What is NOT implemented (upcoming phases)
 
-- **Phase 3:** Per-message collapsible feedback annotations (English, with corrected Japanese), soft labels, grammar-point save.
 - **Phase 4:** Curated scenario mode (data-driven list), generated scenario mode.
 - **Phase 5:** STT via faster-whisper, TTS via VOICEVOX (confirm engine first).
 - **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
@@ -292,6 +362,7 @@ All backend settings read from `backend/.env` (or environment), prefixed `KAIWA_
 | `KAIWA_OLLAMA_MODEL` | `gemma3:27b` | Model for all LLM calls |
 | `KAIWA_TEMPERATURE` | `0.7` | Sampling temperature (conversation) |
 | `KAIWA_TRANSLATION_TEMPERATURE` | `0.3` | Sampling temperature (translation pass) |
+| `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Sampling temperature (feedback pass — cool for stable JSON) |
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled dictionary (relative to backend root) |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
 

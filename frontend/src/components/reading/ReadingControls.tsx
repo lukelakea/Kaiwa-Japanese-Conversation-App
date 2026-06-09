@@ -1,3 +1,4 @@
+import { useSavedGrammarContext } from '../../context/SavedGrammarContext';
 import { useSavedVocabContext } from '../../context/SavedVocabContext';
 import { BookmarkIcon } from '../ui/icons';
 import { ToggleButton } from '../ui/ToggleButton';
@@ -23,6 +24,8 @@ export function ReadingControls({
   onOpenSaved,
 }: ReadingControlsProps) {
   const { words } = useSavedVocabContext();
+  const { items: grammar } = useSavedGrammarContext();
+  const savedCount = words.length + grammar.length;
 
   return (
     <div className="flex items-center gap-2">
@@ -45,9 +48,9 @@ export function ReadingControls({
       >
         <BookmarkIcon className="h-3.5 w-3.5" />
         <span>Saved</span>
-        {words.length > 0 && (
+        {savedCount > 0 && (
           <span className="rounded-full bg-white/10 px-1.5 text-xs text-zinc-300">
-            {words.length}
+            {savedCount}
           </span>
         )}
       </button>

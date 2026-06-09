@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { ApiError, streamChat, tokenize, translate } from '../api/client';
+import { ApiError, requestFeedback, streamChat, tokenize, translate } from '../api/client';
 import type { ConversationSettings, Message, WireMessage } from '../types/conversation';
 
 export type ConversationStatus = 'idle' | 'streaming' | 'error';
@@ -10,6 +10,16 @@ const nextId = (): string => `m${Date.now()}-${idCounter++}`;
 
 const toWire = (messages: Message[]): WireMessage[] =>
   messages.map(({ role, content }) => ({ role, content }));
+
+/** The most recent assistant reply before `index` — the turn being replied to. */
+const contextBefore = (messages: Message[], index: number): string | null => {
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages[i].role === 'assistant' && messages[i].content.trim()) {
+      return messages[i].content;
+    }
+  }
+  return null;
+};
 
 /**
  * Drives a single conversation: holds the message history, sends a turn, and
@@ -58,6 +68,36 @@ export function useConversation() {
     [patchMessage],
   );
 
+  // Critique a user message (brief §8). Runs independently of the reply: the
+  // feedback depends only on the user's text and the turn it replies to, never
+  // on the assistant's answer, so the two LLM calls run in parallel for the
+  // lowest latency. Best-effort — a failure marks the message retryable.
+  const generateFeedback = useCallback(
+    async (id: string, text: string, context: string | null, settings: ConversationSettings) => {
+      patchMessage(id, { feedbackStatus: 'loading', feedback: undefined });
+      try {
+        const feedback = await requestFeedback(text, context, settings);
+        patchMessage(id, { feedback, feedbackStatus: undefined });
+      } catch {
+        patchMessage(id, { feedbackStatus: 'error' });
+      }
+    },
+    [patchMessage],
+  );
+
+  // Retry feedback for a user message after a failure. Reconstructs the context
+  // (the reply it answered) from current history; uses the live settings since
+  // the practised register is what we judge against.
+  const retryFeedback = useCallback(
+    (id: string, settings: ConversationSettings) => {
+      const msgs = messagesRef.current;
+      const index = msgs.findIndex((m) => m.id === id);
+      if (index < 0 || msgs[index].role !== 'user') return;
+      void generateFeedback(id, msgs[index].content, contextBefore(msgs, index), settings);
+    },
+    [generateFeedback],
+  );
+
   const send = useCallback(
     async (text: string, settings: ConversationSettings) => {
       const content = text.trim();
@@ -66,6 +106,8 @@ export function useConversation() {
       const userMessage: Message = { id: nextId(), role: 'user', content };
       const assistantId = nextId();
       const history = toWire([...messages, userMessage]);
+      // The reply the user is responding to, captured before state updates.
+      const feedbackContext = contextBefore(messages, messages.length);
 
       setError(null);
       setStatus('streaming');
@@ -74,6 +116,9 @@ export function useConversation() {
         userMessage,
         { id: assistantId, role: 'assistant', content: '' },
       ]);
+
+      // Kick off feedback alongside the reply (parallel, not sequential).
+      void generateFeedback(userMessage.id, content, feedbackContext, settings);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -113,7 +158,7 @@ export function useConversation() {
         abortRef.current = null;
       }
     },
-    [messages, status, appendDelta, dropIfEmpty, tokenizeMessage],
+    [messages, status, appendDelta, dropIfEmpty, tokenizeMessage, generateFeedback],
   );
 
   // Translate an assistant reply on demand (brief §6 step 3). Stable identity:
@@ -145,5 +190,5 @@ export function useConversation() {
     setStatus('idle');
   }, []);
 
-  return { messages, status, error, send, stop, reset, requestTranslation };
+  return { messages, status, error, send, stop, reset, requestTranslation, retryFeedback };
 }

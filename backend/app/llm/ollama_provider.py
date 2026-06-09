@@ -27,12 +27,16 @@ class OllamaProvider(LLMProvider):
         messages: Sequence[LLMMessage],
         options: GenerationOptions,
     ) -> AsyncIterator[str]:
-        payload = {
+        payload: dict[str, object] = {
             "model": options.model,
             "messages": [{"role": m.role, "content": m.content} for m in messages],
             "stream": True,
             "options": {"temperature": options.temperature},
         }
+        # Ollama's "format": "json" constrains the output to a single valid JSON
+        # object — far more reliable than asking a local model to format itself.
+        if options.json_mode:
+            payload["format"] = "json"
 
         try:
             async with self._client.stream("POST", "/api/chat", json=payload) as response:

@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # reply, so it runs cooler than conversation to stay literal and stable.
     translation_temperature: float = 0.3
 
+    # Feedback (brief §8) is a structured critique of the user's message; it runs
+    # cool for consistent, well-formed JSON rather than creative variation.
+    feedback_temperature: float = 0.3
+
     # Reading-aids dictionary (Phase 2), built by scripts/build_dictionaries.py.
     # Relative paths are resolved against the backend root.
     dictionary_path: str = "data/dictionary.sqlite"

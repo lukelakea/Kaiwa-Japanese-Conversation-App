@@ -6,7 +6,8 @@
  * arrive (brief §6 — progressive disclosure).
  */
 
-import type { ChatRequest } from '../types/conversation';
+import type { ChatRequest, ConversationSettings } from '../types/conversation';
+import type { Feedback } from '../types/feedback';
 import type { LookupResult, Token } from '../types/reading';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
@@ -97,6 +98,27 @@ export async function translate(text: string, signal?: AbortSignal): Promise<str
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
   const data = (await response.json()) as { translation: string };
   return data.translation;
+}
+
+/**
+ * Critique the user's most recent message (brief §8). A separate LLM call run
+ * in parallel with the reply; `context` is the assistant turn being replied to
+ * (null for the opening message) and `settings` fixes the target register.
+ */
+export async function requestFeedback(
+  text: string,
+  context: string | null,
+  settings: ConversationSettings,
+  signal?: AbortSignal,
+): Promise<Feedback> {
+  const response = await fetch(`${API_BASE_URL}/api/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, context, settings }),
+    signal,
+  });
+  if (!response.ok) throw new ApiError(await extractErrorDetail(response));
+  return (await response.json()) as Feedback;
 }
 
 export async function checkHealth(): Promise<boolean> {
