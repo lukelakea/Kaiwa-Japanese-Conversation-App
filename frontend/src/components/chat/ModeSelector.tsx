@@ -207,13 +207,7 @@ function ModeCard({
   );
 }
 
-function ScenarioCard({
-  scenario,
-  onClick,
-}: {
-  scenario: CuratedScenario;
-  onClick: () => void;
-}) {
+function ScenarioCard({ scenario, onClick }: { scenario: CuratedScenario; onClick: () => void }) {
   return (
     <button
       type="button"

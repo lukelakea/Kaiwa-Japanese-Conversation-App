@@ -1,7 +1,29 @@
+import { useHealth } from '../../hooks/useHealth';
+
 interface HeaderProps {
   onReset: () => void;
   canReset: boolean;
   scenarioTitle?: string;
+}
+
+const STATUS_DOT: Record<ReturnType<typeof useHealth>, { color: string; label: string }> = {
+  checking: { color: 'bg-zinc-500', label: 'Checking server…' },
+  online: { color: 'bg-emerald-500', label: 'Server connected' },
+  offline: { color: 'bg-red-500', label: 'Server offline — is the backend running?' },
+};
+
+function ConnectionStatus() {
+  const status = useHealth();
+  const { color, label } = STATUS_DOT[status];
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className="inline-flex h-2.5 w-2.5 items-center justify-center"
+    >
+      <span className={`h-2 w-2 rounded-full ${color}`} />
+    </span>
+  );
 }
 
 export function Header({ onReset, canReset, scenarioTitle }: HeaderProps) {
@@ -12,6 +34,7 @@ export function Header({ onReset, canReset, scenarioTitle }: HeaderProps) {
           <span className="jp-text text-lg font-semibold text-zinc-100">会話</span>
           <span className="text-sm tracking-wide text-zinc-500">Kaiwa</span>
         </div>
+        <ConnectionStatus />
         {scenarioTitle && (
           <span className="hidden rounded-md border border-accent-500/30 bg-accent-500/10 px-2 py-0.5 text-xs text-accent-400 sm:inline">
             {scenarioTitle}

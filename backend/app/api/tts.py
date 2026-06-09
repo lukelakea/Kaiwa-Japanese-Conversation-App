@@ -45,10 +45,7 @@ async def synthesize(
         except httpx.ConnectError as exc:
             raise HTTPException(
                 status_code=502,
-                detail=(
-                    "VOICEVOX is not running. "
-                    f"Start VOICEVOX so it is available at {base}."
-                ),
+                detail=(f"VOICEVOX is not running. Start VOICEVOX so it is available at {base}."),
             ) from exc
         except httpx.HTTPStatusError as exc:
             logger.warning("VOICEVOX audio_query error: %s", exc)

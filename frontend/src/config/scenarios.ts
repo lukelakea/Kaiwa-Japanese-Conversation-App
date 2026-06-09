@@ -61,8 +61,7 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     title: 'Small Talk with a Coworker',
     titleJa: '同僚と雑談',
     hint: 'Chat about the weekend, hobbies, or work',
-    description:
-      'The office break room. Two colleagues catch up over coffee during a break.',
+    description: 'The office break room. Two colleagues catch up over coffee during a break.',
     userRole: 'Colleague (同僚)',
     aiRole: 'Colleague (同僚)',
     category: 'work',
@@ -102,11 +101,11 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
   },
   {
     id: 'doctors-visit',
-    title: "Visiting the Doctor",
+    title: 'Visiting the Doctor',
     titleJa: '病院で診察',
-    hint: 'Describe symptoms and understand the doctor\'s advice',
+    hint: "Describe symptoms and understand the doctor's advice",
     description:
-      "A clinic in Japan. The doctor sees a patient, asks about their symptoms, and explains a diagnosis.",
+      'A clinic in Japan. The doctor sees a patient, asks about their symptoms, and explains a diagnosis.',
     userRole: 'Patient (患者)',
     aiRole: 'Doctor (医師)',
     category: 'services',

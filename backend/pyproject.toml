@@ -22,7 +22,13 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ruff>=0.9"]
+dev = ["ruff>=0.9", "pytest>=8.3"]
+
+[tool.pytest.ini_options]
+# Tests import the `app` package from the backend root; no installable package
+# (uv `package = false`), so put the root on sys.path explicitly.
+pythonpath = ["."]
+testpaths = ["tests"]
 
 # This is an application, not a distributable package: uv manages the
 # environment but does not try to build/install the project itself.

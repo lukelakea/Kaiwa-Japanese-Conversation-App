@@ -115,7 +115,15 @@ export function MicIcon({ className }: IconProps) {
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line
+        x1="10"
+        y1="16"
+        x2="10"
+        y2="19"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -130,8 +138,24 @@ export function MicOffIcon({ className }: IconProps) {
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line
+        x1="10"
+        y1="16"
+        x2="10"
+        y2="19"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="3"
+        y1="3"
+        x2="17"
+        y2="17"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -164,8 +188,24 @@ export function SpeakerOffIcon({ className }: IconProps) {
         strokeWidth="1.3"
         strokeLinejoin="round"
       />
-      <line x1="11" y1="5" x2="15" y2="11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <line x1="15" y1="5" x2="11" y2="11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <line
+        x1="11"
+        y1="5"
+        x2="15"
+        y2="11"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      <line
+        x1="15"
+        y1="5"
+        x2="11"
+        y2="11"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

@@ -249,5 +249,15 @@ export function useConversation() {
     setStatus('idle');
   }, []);
 
-  return { messages, status, error, send, startScenario, stop, reset, requestTranslation, retryFeedback };
+  return {
+    messages,
+    status,
+    error,
+    send,
+    startScenario,
+    stop,
+    reset,
+    requestTranslation,
+    retryFeedback,
+  };
 }

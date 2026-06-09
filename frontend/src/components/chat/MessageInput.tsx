@@ -18,7 +18,13 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
   const isStreaming = status === 'streaming';
   const canSend = text.trim().length > 0 && !isStreaming;
 
-  const { status: recorderStatus, error: recorderError, start, stop, clearError } = useAudioRecorder();
+  const {
+    status: recorderStatus,
+    error: recorderError,
+    start,
+    stop,
+    clearError,
+  } = useAudioRecorder();
   const isRecording = recorderStatus === 'recording';
   const isProcessing = recorderStatus === 'processing';
   const micBusy = isRecording || isProcessing;
