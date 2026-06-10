@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchSpeakers } from '../../api/client';
 import type { SpeakerOption } from '../../api/client';
 import { backdropVariants, drawerVariants } from '../../config/motion';
-import type { AppSettings, TextSize } from '../../types/settings';
+import type { AppSettings, TextSize, TtsSpeed } from '../../types/settings';
 import { TEXT_SIZE_CLASS } from '../../types/settings';
 import { CloseIcon } from '../ui/icons';
 
@@ -20,6 +20,12 @@ const TEXT_SIZE_OPTIONS: { value: TextSize; label: string }[] = [
   { value: 'md', label: 'M' },
   { value: 'lg', label: 'L' },
   { value: 'xl', label: 'XL' },
+];
+
+const TTS_SPEED_OPTIONS: { value: TtsSpeed; label: string }[] = [
+  { value: 0.5, label: '0.5×' },
+  { value: 0.75, label: '0.75×' },
+  { value: 1.0, label: '1×' },
 ];
 
 export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSettingsPanelProps) {
@@ -119,7 +125,55 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Voice
                 </p>
-                <label className="mb-3 block text-sm text-zinc-300">VOICEVOX speaker</label>
+
+                {/* Playback speed */}
+                <div className="mb-4 space-y-2">
+                  <label className="block text-sm text-zinc-300">Playback speed</label>
+                  <div className="flex gap-1.5">
+                    {TTS_SPEED_OPTIONS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => onChange({ ttsSpeed: value })}
+                        aria-pressed={settings.ttsSpeed === value}
+                        className={`flex-1 rounded-lg border py-1.5 text-sm font-medium transition-colors ${
+                          settings.ttsSpeed === value
+                            ? 'border-accent-500/40 bg-accent-600/20 text-accent-400'
+                            : 'border-border text-zinc-400 hover:border-border-strong hover:text-zinc-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Auto-play toggle */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-zinc-300">Auto-play</p>
+                    <p className="text-xs text-zinc-600">Play each response automatically</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.ttsAutoPlay}
+                    onClick={() => onChange({ ttsAutoPlay: !settings.ttsAutoPlay })}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      settings.ttsAutoPlay ? 'bg-accent-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        settings.ttsAutoPlay ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <label htmlFor="tts-voice-select" className="mb-2 block text-sm text-zinc-300">
+                  VOICEVOX speaker
+                </label>
 
                 {speakersStatus === 'loading' && (
                   <p className="text-sm text-zinc-500">Loading speakers…</p>
@@ -132,24 +186,21 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                 )}
 
                 {speakersStatus === 'idle' && speakers.length > 0 && (
-                  <div className="space-y-1">
-                    {/* "Server default" option */}
-                    <VoiceOption
-                      id={null}
-                      name="Server default"
-                      selected={settings.ttsVoice === null}
-                      onSelect={() => onChange({ ttsVoice: null })}
-                    />
+                  <select
+                    id="tts-voice-select"
+                    value={settings.ttsVoice ?? ''}
+                    onChange={(e) =>
+                      onChange({ ttsVoice: e.target.value === '' ? null : Number(e.target.value) })
+                    }
+                    className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-500/50 jp-text"
+                  >
+                    <option value="">Server default</option>
                     {speakers.map((s) => (
-                      <VoiceOption
-                        key={s.id}
-                        id={s.id}
-                        name={s.name}
-                        selected={settings.ttsVoice === s.id}
-                        onSelect={() => onChange({ ttsVoice: s.id })}
-                      />
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 )}
               </section>
             </div>
@@ -157,35 +208,5 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
         </div>
       )}
     </AnimatePresence>
-  );
-}
-
-interface VoiceOptionProps {
-  id: number | null;
-  name: string;
-  selected: boolean;
-  onSelect: () => void;
-}
-
-function VoiceOption({ name, selected, onSelect }: VoiceOptionProps) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-        selected
-          ? 'bg-accent-600/15 text-accent-400'
-          : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
-      }`}
-    >
-      <span
-        className={`h-3.5 w-3.5 shrink-0 rounded-full border transition-colors ${
-          selected ? 'border-accent-500 bg-accent-500' : 'border-zinc-600'
-        }`}
-      />
-      <span className="jp-text">{name}</span>
-    </button>
   );
 }

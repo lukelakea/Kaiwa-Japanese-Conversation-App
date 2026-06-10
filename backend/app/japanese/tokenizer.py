@@ -39,7 +39,8 @@ _POS_MAP: dict[str, str] = {
     "空白": "whitespace",
 }
 
-# Content categories worth a hover-lookup / save, even when written in pure kana.
+# Every category worth a hover popup. Particles and auxiliaries are included so
+# learners can look up は/も/に and ない/です/ます/て in context.
 _INTERACTIVE_POS = {
     "noun",
     "pronoun",
@@ -53,6 +54,42 @@ _INTERACTIVE_POS = {
     "numeral",
     "prefix",
     "suffix",
+    "particle",
+    "auxiliary",
+}
+
+# Maps SudachiPy's conjugation-form field (part_of_speech()[5]) to a concise
+# English label shown in the hover popup when the surface is inflected.
+_CONJUGATION_FORM_MAP: dict[str, str] = {
+    "終止形-一般": "plain form",
+    "連体形-一般": "attributive",
+    "連体形-準体": "attributive",
+    "連用形-一般": "conjunctive",
+    "連用形-ニ接続": "conjunctive",
+    "連用形-撥音便": "conjunctive",
+    "連用形-促音便": "conjunctive",
+    "連用形-イ音便": "conjunctive",
+    "連用形-融合": "conjunctive",
+    "未然形-一般": "irrealis",
+    "未然形-サ接続": "irrealis",
+    "未然形-セ接続": "irrealis",
+    "仮定形-一般": "conditional",
+    "仮定形-融合": "conditional",
+    "命令形": "imperative",
+    "意志推量形": "volitional",
+}
+
+# Maps the leading segment of SudachiPy's conjugation-type field
+# (part_of_speech()[4], e.g. "五段-カ行") to the conjugation class shown in the
+# popover. Only verb/adjective classes a learner would recognise are mapped;
+# auxiliary classes (助動詞-タ etc.) intentionally fall through to None.
+_CONJUGATION_TYPE_MAP: dict[str, str] = {
+    "五段": "godan",
+    "上一段": "ichidan",
+    "下一段": "ichidan",
+    "サ行変格": "irregular (する)",
+    "カ行変格": "irregular (来る)",
+    "形容詞": "i-adjective",
 }
 
 
@@ -169,17 +206,34 @@ class Tokenizer:
         tokens: list[Token] = []
         for morpheme in morphemes:
             surface = morpheme.surface()
+            lemma = morpheme.dictionary_form()
             reading = _kata_to_hira(morpheme.reading_form())
-            pos = _POS_MAP.get(morpheme.part_of_speech()[0], "other")
+            pos_tuple = morpheme.part_of_speech()
+            pos = _POS_MAP.get(pos_tuple[0], "other")
             interactive = pos in _INTERACTIVE_POS or _has_kanji(surface)
+            # Conjugation form label — only useful when the surface is inflected.
+            conj_raw = pos_tuple[5] if len(pos_tuple) > 5 else ""
+            conjugation_form = (
+                _CONJUGATION_FORM_MAP.get(conj_raw)
+                if conj_raw and conj_raw != "*" and surface != lemma
+                else None
+            )
+            # Conjugation class (e.g. "五段-カ行" → godan); keyed on the segment
+            # before the dash, which names the class.
+            type_raw = pos_tuple[4] if len(pos_tuple) > 4 else ""
+            conjugation_type = (
+                _CONJUGATION_TYPE_MAP.get(type_raw.split("-")[0]) if type_raw else None
+            )
             tokens.append(
                 Token(
                     surface=surface,
-                    lemma=morpheme.dictionary_form(),
+                    lemma=lemma,
                     reading=reading,
                     pos=pos,
                     interactive=interactive,
                     furigana=_furigana_segments(surface, reading),
+                    conjugation_form=conjugation_form,
+                    conjugation_type=conjugation_type,
                 )
             )
         return tokens

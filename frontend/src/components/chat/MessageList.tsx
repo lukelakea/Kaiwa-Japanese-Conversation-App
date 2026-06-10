@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 import { bubbleVariants, listStagger } from '../../config/motion';
 import type { Message } from '../../types/conversation';
-import type { TextSize } from '../../types/settings';
+import type { TextSize, TtsSpeed } from '../../types/settings';
 import { EmptyState } from './EmptyState';
 import { MessageBubble } from './MessageBubble';
 
@@ -14,6 +14,8 @@ interface MessageListProps {
   showTranslation: boolean;
   textSize: TextSize;
   ttsVoice: number | null;
+  ttsSpeed: TtsSpeed;
+  ttsAutoPlay: boolean;
   onRequestTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
 }
@@ -25,6 +27,8 @@ export function MessageList({
   showTranslation,
   textSize,
   ttsVoice,
+  ttsSpeed,
+  ttsAutoPlay,
   onRequestTranslation,
   onRetryFeedback,
 }: MessageListProps) {
@@ -47,7 +51,7 @@ export function MessageList({
       className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6"
     >
       {messages.map((message) => (
-        <motion.div key={message.id} layout variants={bubbleVariants}>
+        <motion.div key={message.id} variants={bubbleVariants}>
           <MessageBubble
             message={message}
             showFurigana={showFurigana}
@@ -55,6 +59,8 @@ export function MessageList({
             showTranslation={showTranslation}
             textSize={textSize}
             ttsVoice={ttsVoice}
+            ttsSpeed={ttsSpeed}
+            ttsAutoPlay={ttsAutoPlay}
             onRequestTranslation={onRequestTranslation}
             onRetryFeedback={onRetryFeedback}
           />

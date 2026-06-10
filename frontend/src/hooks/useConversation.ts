@@ -58,15 +58,15 @@ export function useConversation() {
     setMessages((prev) => prev.filter((m) => !(m.id === id && m.content === '')));
   }, []);
 
-  // Tokenise a completed reply (brief §6 step 2) so furigana and hover-lookup
-  // become available. Best-effort: on failure the reply still renders as plain
-  // text, just without reading aids.
+  // Tokenise a completed reply (brief §6 step 2) so furigana, hover-lookup and
+  // grammar-construction cards become available. Best-effort: on failure the
+  // reply still renders as plain text, just without reading aids.
   const tokenizeMessage = useCallback(
     async (id: string, text: string) => {
       if (!text.trim()) return;
       try {
-        const tokens = await tokenize(text);
-        patchMessage(id, { tokens });
+        const { tokens, grammar } = await tokenize(text);
+        patchMessage(id, { tokens, grammar });
       } catch {
         // Leave the message un-tokenised; plain text is a fine fallback.
       }
@@ -128,6 +128,8 @@ export function useConversation() {
         { id: assistantId, role: 'assistant', content: '' },
       ]);
 
+      // Tokenise the user's message so hover/save works on their side too.
+      void tokenizeMessage(userMessage.id, content);
       // Kick off feedback alongside the reply (parallel, not sequential).
       void generateFeedback(userMessage.id, content, feedbackContext, settings);
 
@@ -251,7 +253,7 @@ export function useConversation() {
 
   const restore = useCallback((msgs: Message[]) => {
     abortRef.current?.abort();
-    setMessages(msgs);
+    setMessages(msgs.map((m) => ({ ...m, fromHistory: true as const })));
     setError(null);
     setStatus('idle');
   }, []);

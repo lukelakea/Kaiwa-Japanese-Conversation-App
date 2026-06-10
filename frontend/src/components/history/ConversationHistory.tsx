@@ -16,7 +16,7 @@ interface ConversationHistoryProps {
 
 const leftDrawerVariants = {
   hidden: { x: '-100%' },
-  visible: { x: 0, transition: { type: 'spring', stiffness: 380, damping: 32 } },
+  visible: { x: 0, transition: { type: 'spring' as const, stiffness: 380, damping: 32 } },
   exit: { x: '-100%', transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const } },
 };
 

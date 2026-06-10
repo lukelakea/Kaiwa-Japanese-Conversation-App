@@ -80,7 +80,8 @@ def test_tokenizer_roundtrip_reproduces_input() -> None:
 def test_tokenizer_marks_content_words_interactive() -> None:
     tokenizer = Tokenizer()
     tokens = {t.surface: t for t in tokenizer.tokenize("私は本を読む")}
-    # Content words are hover/save targets; the particle は is not.
+    # Content words and particles are hover/save targets (particles are
+    # included so learners can look up は/も/に in context).
     assert tokens["本"].interactive
     assert tokens["読む"].interactive
-    assert not tokens["は"].interactive
+    assert tokens["は"].interactive

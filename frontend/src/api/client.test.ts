@@ -72,11 +72,26 @@ describe('requestFeedback', () => {
 });
 
 describe('tokenize', () => {
-  it('unwraps the tokens array from the response', async () => {
+  it('returns the tokens and detected grammar from the response', async () => {
     const tokens = [{ surface: '本', lemma: '本', reading: 'ほん' }];
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ tokens })));
+    const grammar = [
+      {
+        patternId: 'te-iru',
+        name: '〜ている',
+        gloss: 'ongoing action',
+        explanation: '…',
+        tokenIndices: [0],
+      },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ tokens, grammar })));
 
-    expect(await tokenize('本')).toEqual(tokens);
+    expect(await tokenize('本')).toEqual({ tokens, grammar });
+  });
+
+  it('defaults grammar to an empty array when the response omits it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ tokens: [] })));
+
+    expect(await tokenize('本')).toEqual({ tokens: [], grammar: [] });
   });
 });
 

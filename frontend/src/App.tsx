@@ -167,6 +167,8 @@ export default function App() {
                 showTranslation={showTranslation}
                 textSize={appSettings.textSize}
                 ttsVoice={appSettings.ttsVoice}
+                ttsSpeed={appSettings.ttsSpeed}
+                ttsAutoPlay={appSettings.ttsAutoPlay}
                 onRequestTranslation={requestTranslation}
                 onRetryFeedback={(id) => retryFeedback(id, settings)}
               />

@@ -41,7 +41,7 @@ describe('useConversation.send', () => {
       expect(callOrder).toContain('feedback');
       onDelta('はい');
     });
-    mocked.tokenize.mockResolvedValue([]);
+    mocked.tokenize.mockResolvedValue({ tokens: [], grammar: [] });
 
     const { result } = renderHook(() => useConversation());
 
@@ -66,7 +66,7 @@ describe('useConversation.send', () => {
       explanation: 'ok',
     });
     mocked.streamChat.mockImplementation(async (_req, { onDelta }) => onDelta('reply'));
-    mocked.tokenize.mockResolvedValue([]);
+    mocked.tokenize.mockResolvedValue({ tokens: [], grammar: [] });
 
     const { result } = renderHook(() => useConversation());
 

@@ -4,7 +4,7 @@
  */
 
 import type { Feedback, FeedbackStatus } from './feedback';
-import type { Token } from './reading';
+import type { GrammarMatch, Token } from './reading';
 
 export type Role = 'user' | 'assistant';
 
@@ -38,12 +38,16 @@ export interface Message {
   content: string;
   /** Tokenised form of an assistant reply, attached once streaming completes. */
   tokens?: Token[];
+  /** Grammatical constructions detected over `tokens`, attached with them. */
+  grammar?: GrammarMatch[];
   /** English translation of an assistant reply, fetched on demand (brief §6). */
   translation?: string;
   translationStatus?: TranslationStatus;
   /** Critique of a user message, fetched in parallel with the reply (brief §8). */
   feedback?: Feedback;
   feedbackStatus?: FeedbackStatus;
+  /** True for messages loaded from saved history — suppresses auto-play. */
+  fromHistory?: true;
 }
 
 /** The wire-format message the backend expects (no id). */

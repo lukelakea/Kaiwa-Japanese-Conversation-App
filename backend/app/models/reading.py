@@ -27,10 +27,30 @@ class Token(BaseModel):
     lemma: str
     reading: str
     pos: str
-    # Whether this token is worth hovering/saving (a content word or kanji),
-    # as opposed to a particle, punctuation, or whitespace.
     interactive: bool
     furigana: list[FuriganaSegment]
+    # English label for the inflected form (e.g. "conjunctive", "past"), present
+    # only when the surface differs from the lemma and the form is recognised.
+    conjugation_form: str | None = Field(default=None, serialization_alias="conjugationForm")
+    # English label for the conjugation class (e.g. "godan", "ichidan"), present
+    # for verbs and i-adjectives so the popover can explain *why* a form looks
+    # the way it does.
+    conjugation_type: str | None = Field(default=None, serialization_alias="conjugationType")
+
+
+class GrammarMatch(BaseModel):
+    """A grammatical construction detected across one or more tokens.
+
+    ``token_indices`` lists every participating token (not necessarily
+    contiguous — e.g. 〜ば〜ほど) so the frontend can show the same construction
+    card whichever member token is hovered.
+    """
+
+    pattern_id: str = Field(serialization_alias="patternId")
+    name: str
+    gloss: str
+    explanation: str
+    token_indices: list[int] = Field(serialization_alias="tokenIndices")
 
 
 class TokenizeRequest(BaseModel):
@@ -39,6 +59,8 @@ class TokenizeRequest(BaseModel):
 
 class TokenizeResponse(BaseModel):
     tokens: list[Token]
+    # Constructions detected over the token stream, longest span first.
+    grammar: list[GrammarMatch] = Field(default_factory=list)
 
 
 class WordSense(BaseModel):

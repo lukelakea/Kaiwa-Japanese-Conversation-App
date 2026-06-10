@@ -67,9 +67,12 @@
   }
 
   /* Furigana: small, tinted readings sitting above the kanji core. The roomy
-     .jp-text line height leaves room for them without crowding lines. */
+     .jp-text line height leaves room for them without crowding lines.
+     font-size: 1em stops browsers from auto-shrinking the base text when ruby
+     annotations are present (a well-known browser default behaviour). */
   .jp-ruby ruby {
     ruby-position: over;
+    font-size: 1em;
   }
 
   .jp-ruby rt {
