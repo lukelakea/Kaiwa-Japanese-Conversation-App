@@ -26,6 +26,7 @@ is ever started — including from `npm run setup`.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
 import json
 import sqlite3
@@ -112,10 +113,14 @@ def download_and_extract_json(url: str, label: str) -> dict:
 # nf01–nf48 are newspaper frequency bands (nf01 = top 500 words); they sit in the
 # range 1–48 so the most frequent band naturally beats the broad tier markers.
 _TAG_SCORES: dict[str, int] = {
-    "ichi1": 10, "news1": 10,
-    "ichi2": 20, "news2": 20,
-    "spec1": 30, "gai1": 30,
-    "spec2": 40, "gai2": 40,
+    "ichi1": 10,
+    "news1": 10,
+    "ichi2": 20,
+    "news2": 20,
+    "spec1": 30,
+    "gai1": 30,
+    "spec2": 40,
+    "gai2": 40,
 }
 
 
@@ -127,10 +132,8 @@ def _priority_score(kanji_forms: list[dict], kana_forms: list[dict]) -> int:
             if tag in _TAG_SCORES:
                 best = min(best, _TAG_SCORES[tag])
             elif len(tag) == 4 and tag[:2] == "nf":
-                try:
+                with contextlib.suppress(ValueError):
                     best = min(best, int(tag[2:]))
-                except ValueError:
-                    pass
     return best
 
 
@@ -219,7 +222,9 @@ def kanjidic_kanji_rows(kanjidic: dict) -> Iterator[tuple[str, dict]]:
 
 _SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-CREATE TABLE words (id INTEGER PRIMARY KEY, priority INTEGER NOT NULL DEFAULT 99, data TEXT NOT NULL);
+CREATE TABLE words (
+    id INTEGER PRIMARY KEY, priority INTEGER NOT NULL DEFAULT 99, data TEXT NOT NULL
+);
 CREATE TABLE word_lookup (key TEXT NOT NULL, word_id INTEGER NOT NULL);
 CREATE TABLE kanji (literal TEXT PRIMARY KEY, data TEXT NOT NULL);
 """
