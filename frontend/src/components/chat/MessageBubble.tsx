@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { synthesize } from '../../api/client';
 import type { Message } from '../../types/conversation';
+import type { TextSize, TtsSpeed } from '../../types/settings';
+import { TEXT_SIZE_CLASS } from '../../types/settings';
 import { SpeakerIcon, StopIcon } from '../ui/icons';
 import { TokenizedText } from '../reading/TokenizedText';
 import { FeedbackAnnotation } from './FeedbackAnnotation';
@@ -9,7 +11,12 @@ import { FeedbackAnnotation } from './FeedbackAnnotation';
 interface MessageBubbleProps {
   message: Message;
   showFurigana: boolean;
+  showRomaji: boolean;
   showTranslation: boolean;
+  textSize: TextSize;
+  ttsVoice: number | null;
+  ttsSpeed: TtsSpeed;
+  ttsAutoPlay: boolean;
   onRequestTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
 }
@@ -31,19 +38,30 @@ function TypingDots() {
 export function MessageBubble({
   message,
   showFurigana,
+  showRomaji,
   showTranslation,
+  textSize,
+  ttsVoice,
+  ttsSpeed,
+  ttsAutoPlay,
   onRequestTranslation,
   onRetryFeedback,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isPending = message.role === 'assistant' && message.content === '';
+  // An assistant reply with text but no tokens yet is still streaming — show a
+  // blinking caret until kuromoji tokens arrive and TokenizedText takes over.
+  const isStreaming =
+    message.role === 'assistant' && message.content !== '' && message.tokens === undefined;
 
   // Fetch the translation the first time it's needed for this reply. Guarded so
-  // it runs once: not while loading, and not as an auto-retry after an error.
+  // it runs once: not while streaming (tokens are undefined until stream ends),
+  // and not as an auto-retry after an error.
   useEffect(() => {
     if (
       showTranslation &&
       message.role === 'assistant' &&
+      message.tokens !== undefined &&
       message.content.trim() &&
       message.translation === undefined &&
       message.translationStatus === undefined
@@ -53,6 +71,7 @@ export function MessageBubble({
   }, [
     showTranslation,
     message.role,
+    message.tokens,
     message.content,
     message.translation,
     message.translationStatus,
@@ -71,18 +90,36 @@ export function MessageBubble({
       >
         {isPending ? (
           <TypingDots />
-        ) : message.tokens && !isUser ? (
-          <TokenizedText tokens={message.tokens} showFurigana={showFurigana} />
+        ) : message.tokens ? (
+          <TokenizedText
+            tokens={message.tokens}
+            grammar={message.grammar}
+            showFurigana={showFurigana}
+            showRomaji={showRomaji}
+            textSize={textSize}
+            isUser={isUser}
+          />
         ) : (
-          <p className="jp-text whitespace-pre-wrap break-words text-[1.05rem]">
+          <p className={`jp-text whitespace-pre-wrap break-words ${TEXT_SIZE_CLASS[textSize]}`}>
             {message.content}
+            {isStreaming && (
+              <span className="stream-caret" aria-hidden>
+                ▍
+              </span>
+            )}
           </p>
         )}
       </div>
 
       {!isUser && !isPending && (
         <div className="mt-1 flex items-center gap-3 px-1">
-          <TtsButton text={message.content} />
+          <TtsButton
+            text={message.content}
+            ttsVoice={ttsVoice}
+            ttsSpeed={ttsSpeed}
+            ttsAutoPlay={ttsAutoPlay && !message.fromHistory}
+            isStreaming={message.tokens === undefined && message.content !== ''}
+          />
           {showTranslation && (
             <Translation message={message} onRetry={() => onRequestTranslation(message.id)} />
           )}
@@ -97,29 +134,33 @@ export function MessageBubble({
 }
 
 /** Play/stop button that synthesises speech via VOICEVOX on demand (Phase 5). */
-function TtsButton({ text }: { text: string }) {
+function TtsButton({
+  text,
+  ttsVoice,
+  ttsSpeed,
+  ttsAutoPlay,
+  isStreaming,
+}: {
+  text: string;
+  ttsVoice: number | null;
+  ttsSpeed: TtsSpeed;
+  ttsAutoPlay: boolean;
+  isStreaming: boolean;
+}) {
   const [ttsStatus, setTtsStatus] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const autoPlayFiredRef = useRef(false);
 
-  const handleClick = async () => {
-    if (ttsStatus === 'playing') {
-      audioRef.current?.pause();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-      setTtsStatus('idle');
-      return;
-    }
+  const playAudio = async () => {
     if (ttsStatus === 'loading') return;
-
     setTtsStatus('loading');
     try {
-      const buffer = await synthesize(text);
+      const buffer = await synthesize(text, ttsVoice);
       const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
       blobUrlRef.current = url;
       const audio = new Audio(url);
+      audio.playbackRate = ttsSpeed;
       audioRef.current = audio;
       audio.onended = () => {
         setTtsStatus('idle');
@@ -133,6 +174,29 @@ function TtsButton({ text }: { text: string }) {
       setTtsStatus('idle');
     }
   };
+
+  const handleClick = () => {
+    if (ttsStatus === 'playing') {
+      audioRef.current?.pause();
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setTtsStatus('idle');
+      return;
+    }
+    void playAudio();
+  };
+
+  // Auto-play fires once per message, after streaming completes.
+  useEffect(() => {
+    if (!ttsAutoPlay || isStreaming || autoPlayFiredRef.current || !text.trim()) return;
+    autoPlayFiredRef.current = true;
+    void playAudio();
+    // playAudio is stable within the component lifetime; listing ttsAutoPlay/isStreaming
+    // as deps would re-trigger, which we explicitly don't want — the ref guards that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsAutoPlay, isStreaming]);
 
   if (!text.trim()) return null;
 

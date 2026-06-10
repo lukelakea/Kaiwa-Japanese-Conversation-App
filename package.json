@@ -4,10 +4,14 @@
   "private": true,
   "description": "Local-first Japanese conversation practice app (working title: Kaiwa)",
   "scripts": {
+    "predev": "kill-port 5173 8000",
     "dev": "concurrently -n backend,frontend -c blue,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "uv run --directory backend uvicorn app.main:app --reload --port 8000",
     "build": "npm --prefix frontend run build",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "npm --prefix frontend run test",
+    "test:backend": "uv run --directory backend pytest",
     "lint": "npm --prefix frontend run lint && npm run lint:backend",
     "lint:backend": "uv run --directory backend ruff check .",
     "format": "npm --prefix frontend run format && npm run format:backend",
@@ -16,6 +20,7 @@
     "setup": "npm install && npm --prefix frontend install && uv sync --directory backend && npm run setup:dict"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "kill-port": "^2.0.1"
   }
 }

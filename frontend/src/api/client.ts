@@ -8,7 +8,7 @@
 
 import type { ChatRequest, ConversationSettings, Scenario } from '../types/conversation';
 import type { Feedback } from '../types/feedback';
-import type { LookupResult, Token } from '../types/reading';
+import type { LookupResult, TokenizedReading } from '../types/reading';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -55,9 +55,10 @@ export async function streamChat(
 
 /**
  * Tokenise an assistant reply into words with furigana and dictionary-form
- * lemmas (brief §6 step 2). Deterministic, server-side, no LLM.
+ * lemmas, plus detected grammatical constructions (brief §6 step 2).
+ * Deterministic, server-side, no LLM.
  */
-export async function tokenize(text: string, signal?: AbortSignal): Promise<Token[]> {
+export async function tokenize(text: string, signal?: AbortSignal): Promise<TokenizedReading> {
   const response = await fetch(`${API_BASE_URL}/api/tokenize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -65,8 +66,8 @@ export async function tokenize(text: string, signal?: AbortSignal): Promise<Toke
     signal,
   });
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
-  const data = (await response.json()) as { tokens: Token[] };
-  return data.tokens;
+  const data = (await response.json()) as TokenizedReading;
+  return { tokens: data.tokens, grammar: data.grammar ?? [] };
 }
 
 /**
@@ -76,9 +77,10 @@ export async function tokenize(text: string, signal?: AbortSignal): Promise<Toke
 export async function lookup(
   surface: string,
   lemma: string,
+  pos: string,
   signal?: AbortSignal,
 ): Promise<LookupResult> {
-  const params = new URLSearchParams({ surface, lemma });
+  const params = new URLSearchParams({ surface, lemma, pos });
   const response = await fetch(`${API_BASE_URL}/api/lookup?${params}`, { signal });
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
   return (await response.json()) as LookupResult;
@@ -164,18 +166,43 @@ export async function transcribe(audio: Blob, signal?: AbortSignal): Promise<str
   return data.text;
 }
 
+export interface SpeakerOption {
+  id: number;
+  name: string;
+}
+
+/**
+ * Fetch available VOICEVOX speakers from the backend. Returns an empty array
+ * if VOICEVOX is not running (502) so callers can degrade gracefully.
+ */
+export async function fetchSpeakers(signal?: AbortSignal): Promise<SpeakerOption[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tts/speakers`, { signal });
+    if (!response.ok) return [];
+    return (await response.json()) as SpeakerOption[];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Synthesise Japanese text to speech via VOICEVOX (Phase 5).
  * Returns raw WAV bytes that the caller plays via the Web Audio API.
- * VOICEVOX must be running locally before this is called.
+ * Pass speakerId to override the server default; omit to use the server config.
  */
-export async function synthesize(text: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+export async function synthesize(
+  text: string,
+  speakerId?: number | null,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer> {
   let response: Response;
+  const body: Record<string, unknown> = { text };
+  if (speakerId != null) body.speaker_id = speakerId;
   try {
     response = await fetch(`${API_BASE_URL}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (cause) {

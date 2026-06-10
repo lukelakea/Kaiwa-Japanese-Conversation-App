@@ -1,13 +1,21 @@
+import { motion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
+import { bubbleVariants, listStagger } from '../../config/motion';
 import type { Message } from '../../types/conversation';
+import type { TextSize, TtsSpeed } from '../../types/settings';
 import { EmptyState } from './EmptyState';
 import { MessageBubble } from './MessageBubble';
 
 interface MessageListProps {
   messages: Message[];
   showFurigana: boolean;
+  showRomaji: boolean;
   showTranslation: boolean;
+  textSize: TextSize;
+  ttsVoice: number | null;
+  ttsSpeed: TtsSpeed;
+  ttsAutoPlay: boolean;
   onRequestTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
 }
@@ -15,7 +23,12 @@ interface MessageListProps {
 export function MessageList({
   messages,
   showFurigana,
+  showRomaji,
   showTranslation,
+  textSize,
+  ttsVoice,
+  ttsSpeed,
+  ttsAutoPlay,
   onRequestTranslation,
   onRetryFeedback,
 }: MessageListProps) {
@@ -31,18 +44,29 @@ export function MessageList({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <motion.div
+      variants={listStagger}
+      initial="hidden"
+      animate="visible"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6"
+    >
       {messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          showFurigana={showFurigana}
-          showTranslation={showTranslation}
-          onRequestTranslation={onRequestTranslation}
-          onRetryFeedback={onRetryFeedback}
-        />
+        <motion.div key={message.id} variants={bubbleVariants}>
+          <MessageBubble
+            message={message}
+            showFurigana={showFurigana}
+            showRomaji={showRomaji}
+            showTranslation={showTranslation}
+            textSize={textSize}
+            ttsVoice={ttsVoice}
+            ttsSpeed={ttsSpeed}
+            ttsAutoPlay={ttsAutoPlay}
+            onRequestTranslation={onRequestTranslation}
+            onRetryFeedback={onRetryFeedback}
+          />
+        </motion.div>
       ))}
       <div ref={bottomRef} />
-    </div>
+    </motion.div>
   );
 }

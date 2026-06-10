@@ -20,6 +20,42 @@ router = APIRouter()
 
 class TTSRequest(BaseModel):
     text: str
+    # Optional override: if omitted the server-configured default is used.
+    speaker_id: int | None = None
+
+
+class SpeakerOption(BaseModel):
+    id: int
+    name: str
+
+
+@router.get("/tts/speakers")
+async def list_speakers(settings: Settings = Depends(get_settings)) -> list[SpeakerOption]:
+    """Return available VOICEVOX speakers as a flat id/name list."""
+    base = settings.voicevox_base_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{base}/speakers")
+            resp.raise_for_status()
+    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"VOICEVOX is not running. Start VOICEVOX so it is available at {base}.",
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"VOICEVOX /speakers returned {exc.response.status_code}.",
+        ) from exc
+
+    raw = resp.json()
+    options: list[SpeakerOption] = []
+    for speaker in raw:
+        for style in speaker.get("styles", []):
+            options.append(
+                SpeakerOption(id=style["id"], name=f"{speaker['name']} — {style['name']}")
+            )
+    return options
 
 
 @router.post("/tts")
@@ -32,7 +68,7 @@ async def synthesize(
         raise HTTPException(status_code=422, detail="Text must not be empty.")
 
     base = settings.voicevox_base_url.rstrip("/")
-    speaker = settings.voicevox_speaker
+    speaker = body.speaker_id if body.speaker_id is not None else settings.voicevox_speaker
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         # Step 1: build the audio query from the text.
@@ -45,10 +81,7 @@ async def synthesize(
         except httpx.ConnectError as exc:
             raise HTTPException(
                 status_code=502,
-                detail=(
-                    "VOICEVOX is not running. "
-                    f"Start VOICEVOX so it is available at {base}."
-                ),
+                detail=(f"VOICEVOX is not running. Start VOICEVOX so it is available at {base}."),
             ) from exc
         except httpx.HTTPStatusError as exc:
             logger.warning("VOICEVOX audio_query error: %s", exc)

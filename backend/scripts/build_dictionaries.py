@@ -26,6 +26,7 @@ is ever started — including from `npm run setup`.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
 import json
 import sqlite3
@@ -108,6 +109,33 @@ def download_and_extract_json(url: str, label: str) -> dict:
 # JMdict → rows
 # --------------------------------------------------------------------------- #
 
+# Lower score = more common. Derived from JMdict priority tags on kanji/kana forms.
+# nf01–nf48 are newspaper frequency bands (nf01 = top 500 words); they sit in the
+# range 1–48 so the most frequent band naturally beats the broad tier markers.
+_TAG_SCORES: dict[str, int] = {
+    "ichi1": 10,
+    "news1": 10,
+    "ichi2": 20,
+    "news2": 20,
+    "spec1": 30,
+    "gai1": 30,
+    "spec2": 40,
+    "gai2": 40,
+}
+
+
+def _priority_score(kanji_forms: list[dict], kana_forms: list[dict]) -> int:
+    """Return a frequency score for a JMdict entry (lower = more common, 99 = unranked)."""
+    best = 99
+    for form in kanji_forms + kana_forms:
+        for tag in form.get("tags", []):
+            if tag in _TAG_SCORES:
+                best = min(best, _TAG_SCORES[tag])
+            elif len(tag) == 4 and tag[:2] == "nf":
+                with contextlib.suppress(ValueError):
+                    best = min(best, int(tag[2:]))
+    return best
+
 
 def _gloss_texts(sense: dict) -> list[str]:
     return [g["text"] for g in sense.get("gloss", []) if g.get("lang", "eng") == "eng"]
@@ -115,17 +143,20 @@ def _gloss_texts(sense: dict) -> list[str]:
 
 def jmdict_word_rows(
     jmdict: dict,
-) -> Iterator[tuple[dict, list[str]]]:
-    """Yield ``(compact_entry, lookup_keys)`` for each JMdict word.
+) -> Iterator[tuple[dict, list[str], int]]:
+    """Yield ``(compact_entry, lookup_keys, priority)`` for each JMdict word.
 
     ``compact_entry`` is the trimmed record stored as JSON; ``lookup_keys`` is
-    every kanji form and kana reading the entry can be found by.
+    every kanji form and kana reading the entry can be found by; ``priority`` is
+    a frequency score (lower = more common) derived from JMdict priority tags.
     """
     pos_names: dict[str, str] = jmdict.get("tags", {})
 
     for word in jmdict["words"]:
-        kanji = [k["text"] for k in word.get("kanji", [])]
-        kana = [k["text"] for k in word.get("kana", [])]
+        kanji_forms = word.get("kanji", [])
+        kana_forms = word.get("kana", [])
+        kanji = [k["text"] for k in kanji_forms]
+        kana = [k["text"] for k in kana_forms]
 
         senses = []
         for sense in word.get("sense", []):
@@ -140,7 +171,8 @@ def jmdict_word_rows(
 
         entry = {"kanji": kanji, "kana": kana, "senses": senses}
         keys = list(dict.fromkeys(kanji + kana))  # de-duped, order-preserving
-        yield entry, keys
+        priority = _priority_score(kanji_forms, kana_forms)
+        yield entry, keys, priority
 
 
 # --------------------------------------------------------------------------- #
@@ -190,7 +222,9 @@ def kanjidic_kanji_rows(kanjidic: dict) -> Iterator[tuple[str, dict]]:
 
 _SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-CREATE TABLE words (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE words (
+    id INTEGER PRIMARY KEY, priority INTEGER NOT NULL DEFAULT 99, data TEXT NOT NULL
+);
 CREATE TABLE word_lookup (key TEXT NOT NULL, word_id INTEGER NOT NULL);
 CREATE TABLE kanji (literal TEXT PRIMARY KEY, data TEXT NOT NULL);
 """
@@ -210,10 +244,10 @@ def build_database(db_path: Path, jmdict: dict, kanjidic: dict, version: str) ->
 
         log("  writing words …")
         word_count = 0
-        for entry, keys in jmdict_word_rows(jmdict):
+        for entry, keys, priority in jmdict_word_rows(jmdict):
             cursor = conn.execute(
-                "INSERT INTO words (data) VALUES (?)",
-                (json.dumps(entry, ensure_ascii=False),),
+                "INSERT INTO words (priority, data) VALUES (?, ?)",
+                (priority, json.dumps(entry, ensure_ascii=False)),
             )
             word_id = cursor.lastrowid
             conn.executemany(

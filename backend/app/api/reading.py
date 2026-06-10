@@ -7,7 +7,7 @@ work is dispatched to a worker thread so it never blocks the event loop.
 from fastapi import APIRouter, Depends, Query, Request
 from starlette.concurrency import run_in_threadpool
 
-from app.japanese import Dictionary, Tokenizer
+from app.japanese import Dictionary, Tokenizer, detect_grammar
 from app.models.reading import LookupResponse, TokenizeRequest, TokenizeResponse
 
 router = APIRouter()
@@ -26,16 +26,24 @@ async def tokenize(
     payload: TokenizeRequest,
     tokenizer: Tokenizer = Depends(get_tokenizer),
 ) -> TokenizeResponse:
-    """Tokenise a reply into words with furigana and dictionary-form lemmas."""
+    """Tokenise a reply into words with furigana and dictionary-form lemmas.
+
+    Also detects multi-token grammatical constructions over the token stream so
+    the hover popup can explain 〜ている and friends, not just single morphemes.
+    """
     tokens = await run_in_threadpool(tokenizer.tokenize, payload.text)
-    return TokenizeResponse(tokens=tokens)
+    return TokenizeResponse(tokens=tokens, grammar=detect_grammar(tokens))
 
 
 @router.get("/lookup", response_model=LookupResponse)
 async def lookup(
     surface: str = Query(..., min_length=1, description="The token as written."),
     lemma: str = Query("", description="The token's dictionary form, if known."),
+    pos: str = Query(
+        "",
+        description="Token part of speech; used to filter results for particles and auxiliaries.",
+    ),
     dictionary: Dictionary = Depends(get_dictionary),
 ) -> LookupResponse:
     """Look up a token: JMdict word senses plus KANJIDIC2 detail per kanji."""
-    return await run_in_threadpool(dictionary.look_up, surface, lemma or surface)
+    return await run_in_threadpool(dictionary.look_up, surface, lemma or surface, pos)

@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
+import { transitions } from '../../config/motion';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import type { ConversationStatus } from '../../hooks/useConversation';
 import { MicIcon, MicOffIcon, SendIcon, StopIcon } from '../ui/icons';
@@ -18,7 +20,13 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
   const isStreaming = status === 'streaming';
   const canSend = text.trim().length > 0 && !isStreaming;
 
-  const { status: recorderStatus, error: recorderError, start, stop, clearError } = useAudioRecorder();
+  const {
+    status: recorderStatus,
+    error: recorderError,
+    start,
+    stop,
+    clearError,
+  } = useAudioRecorder();
   const isRecording = recorderStatus === 'recording';
   const isProcessing = recorderStatus === 'processing';
   const micBusy = isRecording || isProcessing;
@@ -59,7 +67,7 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
   };
 
   return (
-    <div className="border-t border-white/10 bg-surface-1/80 backdrop-blur">
+    <div className="border-t border-border bg-surface-1/80 backdrop-blur">
       {recorderError && (
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 pt-2">
           <p className="text-xs text-red-400">{recorderError}</p>
@@ -74,27 +82,37 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
       )}
       <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-3">
         {/* Mic button — always shown; disabled while the AI is streaming */}
-        <button
+        <motion.button
           type="button"
           onClick={() => void handleMicClick()}
           disabled={isStreaming}
+          whileTap={{ scale: 0.92 }}
+          transition={transitions.spring}
           aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
           title={isRecording ? 'Stop recording' : 'Record voice input'}
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors
+          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors
             ${
               isRecording
-                ? 'animate-pulse bg-red-600/80 text-white hover:bg-red-500'
+                ? 'bg-red-600/80 text-white hover:bg-red-500'
                 : isProcessing
                   ? 'cursor-wait bg-surface-2 text-zinc-500'
                   : 'bg-surface-2 text-zinc-400 hover:bg-white/10 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-600'
             }`}
         >
+          {isRecording && (
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-xl bg-red-500/40"
+              animate={{ opacity: [0.5, 0], scale: [1, 1.35] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
+            />
+          )}
           {isRecording ? (
             <MicOffIcon className="h-5 w-5" />
           ) : (
             <MicIcon className={`h-5 w-5 ${isProcessing ? 'opacity-40' : ''}`} />
           )}
-        </button>
+        </motion.button>
 
         <textarea
           ref={textareaRef}
@@ -110,28 +128,34 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
                 ? '文字起こし中…'
                 : '日本語でメッセージを入力…'
           }
-          className="jp-text max-h-[200px] flex-1 resize-none rounded-xl border border-white/10 bg-surface-2 px-4 py-2.5 text-zinc-100 placeholder:text-zinc-500 focus:border-accent-500/60 focus:outline-none disabled:opacity-50"
+          className="jp-text max-h-[200px] flex-1 resize-none rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-accent-500/60 focus:outline-none disabled:opacity-50"
         />
 
         {isStreaming ? (
-          <button
+          <motion.button
             type="button"
             onClick={onStop}
+            whileTap={{ scale: 0.92 }}
+            transition={transitions.spring}
             aria-label="Stop generating"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-zinc-300 transition-colors hover:bg-white/10"
           >
             <StopIcon className="h-4 w-4" />
-          </button>
+          </motion.button>
         ) : (
-          <button
+          <motion.button
             type="button"
             onClick={submit}
             disabled={!canSend}
+            whileTap={{ scale: 0.92 }}
+            transition={transitions.spring}
             aria-label="Send message"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-white transition-colors hover:bg-accent-500 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-zinc-600"
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-white transition-colors hover:bg-accent-500 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-zinc-600 ${
+              canSend ? 'shadow-accent-glow' : ''
+            }`}
           >
             <SendIcon className="h-5 w-5" />
-          </button>
+          </motion.button>
         )}
       </div>
     </div>

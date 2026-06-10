@@ -1,5 +1,7 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
+import { backdropVariants, drawerVariants } from '../../config/motion';
 import { useSavedGrammarContext } from '../../context/SavedGrammarContext';
 import { useSavedVocabContext } from '../../context/SavedVocabContext';
 import type { SavedGrammar } from '../../types/feedback';
@@ -32,50 +34,64 @@ export function SavedPanel({ open, onClose }: SavedPanelProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <aside
-        role="dialog"
-        aria-label="Saved items"
-        className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-white/10 bg-surface-1 shadow-2xl"
-      >
-        <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-200">Saved</h2>
-          <button
-            type="button"
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-40">
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute inset-0 bg-black/40"
             onClick={onClose}
-            aria-label="Close"
-            className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-200"
+            aria-hidden
+          />
+          <motion.aside
+            role="dialog"
+            aria-label="Saved items"
+            variants={drawerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col border-l border-border bg-surface-1 shadow-lg"
           >
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        </header>
+            <header className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold text-zinc-200">Saved</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-200"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </header>
 
-        <div className="flex gap-1 border-b border-white/10 px-2 py-2">
-          <TabButton
-            label="Words"
-            count={words.length}
-            active={tab === 'words'}
-            onClick={() => setTab('words')}
-          />
-          <TabButton
-            label="Grammar"
-            count={grammar.length}
-            active={tab === 'grammar'}
-            onClick={() => setTab('grammar')}
-          />
+            <div className="flex gap-1 border-b border-border px-2 py-2">
+              <TabButton
+                label="Words"
+                count={words.length}
+                active={tab === 'words'}
+                onClick={() => setTab('words')}
+              />
+              <TabButton
+                label="Grammar"
+                count={grammar.length}
+                active={tab === 'grammar'}
+                onClick={() => setTab('grammar')}
+              />
+            </div>
+
+            {tab === 'words' ? (
+              <WordList words={words} onRemove={removeWord} />
+            ) : (
+              <GrammarList items={grammar} onRemove={removeGrammar} />
+            )}
+          </motion.aside>
         </div>
-
-        {tab === 'words' ? (
-          <WordList words={words} onRemove={removeWord} />
-        ) : (
-          <GrammarList items={grammar} onRemove={removeGrammar} />
-        )}
-      </aside>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }
 

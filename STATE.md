@@ -448,6 +448,30 @@ New/modified:
 
 ---
 
+### 1.0 hardening (post-Phase 5 polish)
+
+Portfolio/quality pass over the finished v1.0 — no new product features:
+
+- **Test suites + CI.** `backend/tests/` (pytest) covers system-prompt
+  composition across the full settings matrix, the furigana alignment heuristic
+  + tokeniser round-trip, and the defensive feedback/scenario JSON parsing.
+  `frontend/src/**/*.test.ts` (Vitest) covers the typed API client (mocked
+  `fetch`) and `useConversation` (mocked client) — including the brief §8
+  parallel feedback/reply dispatch and §9 full-history send. Run with
+  `npm test` (or `test:frontend` / `test:backend`). A GitHub Actions workflow
+  (`.github/workflows/ci.yml`) runs lint + format-check + tests + build for both
+  halves on push/PR. None of the tests need Ollama, VOICEVOX, or the dictionary.
+- **Connection indicator.** The previously-unused `checkHealth()` now backs a
+  `useHealth` hook and a small status dot in the header (green/red/checking),
+  polling `/api/health` every 15s so the user sees if the backend is down before
+  they type.
+- **LICENSE** (MIT) and a **README hero screenshot** (`docs/screenshot.png`,
+  a real capture: furigana on, feedback chip, connection dot). README status
+  updated from the stale "Phases 0–2" to v1.0-complete with the full feature set.
+- **Mobile sanity-checked** at 375px (brief's "responsive structure now"): the
+  settings bar and reading controls wrap into rows, bubbles reflow, no overflow.
+- `app/api/tts.py` reformatted by `ruff format` (now enforced in CI).
+
 ## What is NOT implemented (post-1.0)
 
 - **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.

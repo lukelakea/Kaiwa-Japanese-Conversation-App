@@ -1,17 +1,45 @@
 @import 'tailwindcss';
 
-/* Design tokens. Kept small and semantic so the dark theme stays consistent
-   and Japanese text is legible (generous font, comfortable line height). */
+/* Design tokens. Kept small and semantic so the dark theme stays cohesive and
+   Japanese text is legible (generous font, comfortable line height). Premium
+   cool-dark identity: layered OKLch surfaces (hue ~285), a teal accent ramp
+   (hue ~195), and a shared motion vocabulary used by both CSS and `motion`. */
 @theme {
   --font-sans: 'Noto Sans JP', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-surface-0: oklch(0.17 0.005 285); /* app background */
-  --color-surface-1: oklch(0.21 0.006 285); /* panels / bars */
-  --color-surface-2: oklch(0.26 0.007 285); /* raised elements, AI bubble */
+  /* Elevation surfaces — deeper at the base, lighter as elements rise. */
+  --color-surface-0: oklch(0.16 0.006 285); /* app background */
+  --color-surface-1: oklch(0.2 0.007 285); /* panels / bars */
+  --color-surface-2: oklch(0.25 0.008 285); /* raised elements, AI bubble */
+  --color-surface-3: oklch(0.3 0.009 285); /* popovers, dropdowns (highest) */
 
+  /* Accent ramp (teal/cyan). A full ramp so hover/active/glow are principled
+     rather than opacity hacks. */
+  --color-accent-300: oklch(0.85 0.1 195);
   --color-accent-400: oklch(0.78 0.12 195);
   --color-accent-500: oklch(0.7 0.13 195);
   --color-accent-600: oklch(0.62 0.13 195);
+  --color-accent-700: oklch(0.54 0.12 195);
+
+  /* Semantic borders — replace scattered raw white/10 usages. */
+  --color-border: oklch(1 0 0 / 0.1);
+  --color-border-strong: oklch(1 0 0 / 0.18);
+
+  /* Elevation shadows — soft, low-alpha, slightly cool-tinted for a dark UI. */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-md: 0 6px 16px -4px oklch(0 0 0 / 0.45);
+  --shadow-lg: 0 18px 40px -12px oklch(0 0 0 / 0.6);
+  /* Accent glow for focus/active states — used sparingly. */
+  --shadow-accent-glow:
+    0 0 0 1px oklch(0.7 0.13 195 / 0.4), 0 4px 18px -4px oklch(0.7 0.13 195 / 0.35);
+
+  /* Motion vocabulary — durations + a signature easing curve. Shared by CSS
+     transitions and `motion` variants (see src/config/motion.ts) so everything
+     feels related. */
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 320ms;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -30,17 +58,77 @@
     letter-spacing: 0.01em;
   }
 
+  /* Display headings (mode picker, scenario titles). Latin tightens up; the
+     .jp-text class still governs line height for Japanese glyphs. Balanced
+     wrapping keeps multi-line headings visually even. */
+  .display-heading {
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
   /* Furigana: small, tinted readings sitting above the kanji core. The roomy
-     .jp-text line height leaves room for them without crowding lines. */
+     .jp-text line height leaves room for them without crowding lines.
+     font-size: 1em stops browsers from auto-shrinking the base text when ruby
+     annotations are present (a well-known browser default behaviour). */
   .jp-ruby ruby {
     ruby-position: over;
+    font-size: 1em;
   }
 
   .jp-ruby rt {
-    font-size: 0.5em;
+    font-size: 0.65em;
     font-weight: 400;
     letter-spacing: 0;
     color: var(--color-accent-400);
     user-select: none;
+  }
+
+  /* Romaji: same size/weight as furigana but sits below and uses a neutral colour
+     so it doesn't compete with furigana when both aids are active together. */
+  .jp-ruby ruby.romaji-ruby {
+    ruby-position: under;
+  }
+
+  .jp-ruby ruby.romaji-ruby > rt {
+    color: oklch(0.58 0 0);
+  }
+
+  /* Extra line-height when ruby annotations occupy both tiers. The base 1.9
+     only leaves room for one tier; romaji-only needs space below, both needs
+     space above and below. Values are unitless so they scale with text size. */
+  .jp-ruby-romaji {
+    line-height: 2.8;
+  }
+
+  .jp-ruby-both {
+    line-height: 3.6;
+  }
+
+  /* Blinking caret appended to an assistant reply while it streams. */
+  .stream-caret {
+    display: inline-block;
+    width: 0.5ch;
+    margin-left: 0.1ch;
+    color: var(--color-accent-400);
+    animation: caret-blink 1s steps(2, start) infinite;
+  }
+
+  @keyframes caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* Safety net: honour reduced-motion for CSS animations/transitions. `motion`
+     respects the same preference for JS-driven animations. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

@@ -1,8 +1,10 @@
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 
+import { popVariants } from '../../config/motion';
 import { useSavedVocabContext } from '../../context/SavedVocabContext';
 import { useTokenLookup } from '../../hooks/useTokenLookup';
-import type { KanjiEntry, SavedWord, Token, WordEntry } from '../../types/reading';
+import type { GrammarMatch, KanjiEntry, SavedWord, Token, WordEntry } from '../../types/reading';
 import { BookmarkIcon } from '../ui/icons';
 
 const POPOVER_WIDTH = 320;
@@ -11,6 +13,12 @@ const FLIP_THRESHOLD = 260;
 
 interface WordPopoverProps {
   token: Token;
+  /** The full token stream, used to render each construction's span. */
+  tokens: Token[];
+  /** Constructions the hovered token participates in, widest first. */
+  matches: GrammarMatch[];
+  /** Index of the hovered token, emphasised within each construction span. */
+  activeIndex: number;
   /** Viewport rect of the hovered token, used to position the popover. */
   anchor: DOMRect;
   onPointerEnter: () => void;
@@ -18,11 +26,20 @@ interface WordPopoverProps {
 }
 
 /**
- * Floating dictionary card for a hovered token (brief §7): JMdict word senses,
- * per-kanji detail, and a one-click save. Rendered in a portal so it is never
- * clipped by the scrolling message list.
+ * Floating dictionary card for a hovered token (brief §7): grammatical
+ * constructions the token is part of, JMdict word senses, per-kanji detail,
+ * and a one-click save. Rendered in a portal so it is never clipped by the
+ * scrolling message list.
  */
-export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: WordPopoverProps) {
+export function WordPopover({
+  token,
+  tokens,
+  matches,
+  activeIndex,
+  anchor,
+  onPointerEnter,
+  onPointerLeave,
+}: WordPopoverProps) {
   const { result, loading, error } = useTokenLookup(token, true);
   const { has, save, remove } = useSavedVocabContext();
   const saved = has(token.lemma);
@@ -39,18 +56,28 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
     saved ? remove(token.lemma) : save(buildSavedWord(token, result?.words[0]));
 
   return createPortal(
-    <div
+    <motion.div
       role="dialog"
+      variants={popVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
-      className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-white/10 bg-surface-2 p-3 text-sm shadow-2xl shadow-black/50"
-      style={style}
+      className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-border bg-surface-3 p-3 text-sm shadow-lg"
+      style={{ ...style, transformOrigin: flipUp ? 'bottom' : 'top' }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="jp-text text-lg text-zinc-100">{token.surface}</span>
+          <span className="jp-text text-lg text-accent-400">{token.surface}</span>
           {token.reading && token.reading !== token.surface && (
             <span className="jp-text ml-2 text-zinc-400">{token.reading}</span>
+          )}
+          {token.conjugationForm && (
+            <p className="mt-0.5 text-xs italic text-zinc-500">
+              {token.conjugationForm} of {token.lemma}
+              {token.conjugationType && ` · ${token.conjugationType}`}
+            </p>
           )}
         </div>
         <button
@@ -61,7 +88,7 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
           className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
             saved
               ? 'border-accent-500/40 bg-accent-600/20 text-accent-400'
-              : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-zinc-200'
+              : 'border-border text-zinc-400 hover:border-border-strong hover:text-zinc-200'
           }`}
         >
           <BookmarkIcon className="h-3.5 w-3.5" filled={saved} />
@@ -69,11 +96,61 @@ export function WordPopover({ token, anchor, onPointerEnter, onPointerLeave }: W
         </button>
       </div>
 
+      {matches.length > 0 && (
+        <div className="mb-3 flex flex-col gap-2">
+          {matches.map((match) => (
+            <ConstructionCard
+              key={`${match.patternId}-${match.tokenIndices[0]}`}
+              match={match}
+              tokens={tokens}
+              activeIndex={activeIndex}
+            />
+          ))}
+        </div>
+      )}
+
       {loading && <p className="text-zinc-500">Looking up…</p>}
       {error && <p className="text-zinc-500">Couldn’t load the dictionary.</p>}
       {result && !loading && <DictionaryBody words={result.words} kanji={result.kanji} />}
-    </div>,
+    </motion.div>,
     document.body,
+  );
+}
+
+/**
+ * One detected grammatical construction: its name and gloss, the matched span
+ * (hovered token emphasised, gaps in split patterns shown as …), and a short
+ * explanation of why the pieces mean what they mean.
+ */
+function ConstructionCard({
+  match,
+  tokens,
+  activeIndex,
+}: {
+  match: GrammarMatch;
+  tokens: Token[];
+  activeIndex: number;
+}) {
+  return (
+    <div className="rounded-lg border border-accent-500/20 bg-accent-500/5 p-2">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="jp-text text-accent-400">{match.name}</span>
+        <span className="text-xs text-zinc-300">{match.gloss}</span>
+      </div>
+      <div className="jp-text mt-0.5 text-sm text-zinc-200">
+        {match.tokenIndices.map((tokenIndex, i) => (
+          <span key={tokenIndex}>
+            {i > 0 && tokenIndex !== match.tokenIndices[i - 1] + 1 && (
+              <span className="text-zinc-600">…</span>
+            )}
+            <span className={tokenIndex === activeIndex ? 'text-accent-400' : undefined}>
+              {tokens[tokenIndex].surface}
+            </span>
+          </span>
+        ))}
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-400">{match.explanation}</p>
+    </div>
   );
 }
 
