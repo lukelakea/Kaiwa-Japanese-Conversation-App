@@ -41,10 +41,16 @@ export function Header({
   return (
     <header className="flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex items-baseline gap-2">
+        <button
+          type="button"
+          onClick={onReset}
+          aria-label="Back to home"
+          title="Back to home"
+          className="flex items-baseline gap-2 rounded-md transition-opacity hover:opacity-80"
+        >
           <span className="jp-text text-lg font-semibold text-zinc-100">会話</span>
           <span className="text-sm tracking-wide text-zinc-500">Kaiwa</span>
-        </div>
+        </button>
         <ConnectionStatus />
         {scenarioTitle && (
           <span className="hidden rounded-md border border-accent-500/30 bg-accent-500/10 px-2 py-0.5 text-xs text-accent-400 sm:inline">

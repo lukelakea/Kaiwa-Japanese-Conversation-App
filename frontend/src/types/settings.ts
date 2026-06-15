@@ -9,6 +9,8 @@ export interface AppSettings {
   ttsSpeed: TtsSpeed;
   /** Automatically play TTS for each new assistant message. */
   ttsAutoPlay: boolean;
+  /** Show a live English translation preview of the message being composed. */
+  inputTranslation: boolean;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -16,6 +18,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ttsVoice: null,
   ttsSpeed: 1.0,
   ttsAutoPlay: false,
+  inputTranslation: false,
 };
 
 /** Tailwind class for each text size step. */

@@ -229,6 +229,20 @@ export function HistoryIcon({ className }: IconProps) {
   );
 }
 
+/** Pencil — edit/rewind affordance on the user's last message. */
+export function EditIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>
+      <path
+        d="M11.3 2.3a1 1 0 0 1 1.4 0l1 1a1 1 0 0 1 0 1.4L5.5 12.8l-2.8.7.7-2.8 7.9-8.4z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SpeakerOffIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>

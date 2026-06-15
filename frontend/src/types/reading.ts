@@ -44,6 +44,17 @@ export interface TokenizedReading {
   grammar: GrammarMatch[];
 }
 
+/**
+ * One unit of pronunciation from VOICEVOX's audio_query, with its hiragana
+ * reading and time range (seconds) within the synthesised audio. Used to
+ * highlight tokens in sync with TTS playback (Phase 5).
+ */
+export interface MoraTiming {
+  text: string;
+  start: number;
+  end: number;
+}
+
 export interface WordSense {
   partOfSpeech: string[];
   glosses: string[];

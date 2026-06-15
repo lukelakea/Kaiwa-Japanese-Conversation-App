@@ -76,7 +76,7 @@
   }
 
   .jp-ruby rt {
-    font-size: 0.65em;
+    font-size: 0.7em;
     font-weight: 400;
     letter-spacing: 0;
     color: var(--color-accent-400);
@@ -91,6 +91,17 @@
 
   .jp-ruby ruby.romaji-ruby > rt {
     color: oklch(0.58 0 0);
+  }
+
+  /* On the teal user bubble, the default accent/grey readings lose almost all
+     contrast against the accent-600 background. Use light, semi-transparent
+     white tones instead so furigana and romaji stay legible there. */
+  .jp-ruby ruby.on-accent > rt {
+    color: oklch(1 0 0 / 0.85);
+  }
+
+  .jp-ruby ruby.romaji-ruby.on-accent > rt {
+    color: oklch(1 0 0 / 0.65);
   }
 
   /* Extra line-height when ruby annotations occupy both tiers. The base 1.9

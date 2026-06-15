@@ -118,6 +118,31 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                     Affects conversation text and furigana size.
                   </p>
                 </div>
+
+                {/* Input translation toggle */}
+                <div className="mt-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-zinc-300">Input translation</p>
+                    <p className="text-xs text-zinc-600">
+                      Show an English preview of your message as you type
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.inputTranslation}
+                    onClick={() => onChange({ inputTranslation: !settings.inputTranslation })}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      settings.inputTranslation ? 'bg-accent-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        settings.inputTranslation ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </section>
 
               {/* Voice section */}

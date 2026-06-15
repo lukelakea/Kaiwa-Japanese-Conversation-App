@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { synthesize } from '../../api/client';
 import type { Message } from '../../types/conversation';
+import type { Token } from '../../types/reading';
 import type { TextSize, TtsSpeed } from '../../types/settings';
 import { TEXT_SIZE_CLASS } from '../../types/settings';
-import { SpeakerIcon, StopIcon } from '../ui/icons';
+import { EditIcon, SpeakerIcon, StopIcon } from '../ui/icons';
+import { activeTokenAt, alignMorasToTokens, type TokenTiming } from '../reading/alignTiming';
 import { TokenizedText } from '../reading/TokenizedText';
 import { FeedbackAnnotation } from './FeedbackAnnotation';
+import { TranslationText } from './TranslationText';
 
 interface MessageBubbleProps {
   message: Message;
@@ -17,8 +20,12 @@ interface MessageBubbleProps {
   ttsVoice: number | null;
   ttsSpeed: TtsSpeed;
   ttsAutoPlay: boolean;
+  /** True for the most recent user message, while idle — it alone can be edited/rewound. */
+  canRewind: boolean;
   onRequestTranslation: (id: string) => void;
+  onRequestCorrectionTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
+  onRewind: (id: string) => void;
 }
 
 function TypingDots() {
@@ -44,8 +51,11 @@ export function MessageBubble({
   ttsVoice,
   ttsSpeed,
   ttsAutoPlay,
+  canRewind,
   onRequestTranslation,
+  onRequestCorrectionTranslation,
   onRetryFeedback,
+  onRewind,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isPending = message.role === 'assistant' && message.content === '';
@@ -54,17 +64,68 @@ export function MessageBubble({
   const isStreaming =
     message.role === 'assistant' && message.content !== '' && message.tokens === undefined;
 
-  // Fetch the translation the first time it's needed for this reply. Guarded so
-  // it runs once: not while streaming (tokens are undefined until stream ends),
-  // and not as an auto-retry after an error.
+  // Index of the token currently being spoken, set by TtsButton during playback
+  // (or by a single-word click below) so TokenizedText can highlight it in sync
+  // with the audio (Phase 5).
+  const [activeTokenIndex, setActiveTokenIndex] = useState<number | null>(null);
+
+  const ttsButtonRef = useRef<TtsButtonHandle>(null);
+  const wordAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wordBlobUrlRef = useRef<string | null>(null);
+
+  const stopWordAudio = () => {
+    wordAudioRef.current?.pause();
+    if (wordBlobUrlRef.current) {
+      URL.revokeObjectURL(wordBlobUrlRef.current);
+      wordBlobUrlRef.current = null;
+    }
+    wordAudioRef.current = null;
+  };
+
+  useEffect(() => stopWordAudio, []);
+
+  // Click-to-pronounce: speak a single word on demand, independent of the main
+  // message playback (which is paused first to avoid overlapping audio).
+  const handleTokenClick = async (index: number) => {
+    const token = message.tokens?.[index];
+    if (!token || !token.surface.trim()) return;
+
+    ttsButtonRef.current?.stop();
+    stopWordAudio();
+
+    try {
+      const { audio: buffer } = await synthesize(token.surface, ttsVoice);
+      const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+      wordBlobUrlRef.current = url;
+      const audio = new Audio(url);
+      audio.playbackRate = ttsSpeed;
+      wordAudioRef.current = audio;
+      const cleanup = () => {
+        setActiveTokenIndex((current) => (current === index ? null : current));
+        URL.revokeObjectURL(url);
+        wordBlobUrlRef.current = null;
+        wordAudioRef.current = null;
+      };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+      setActiveTokenIndex(index);
+      await audio.play();
+    } catch {
+      setActiveTokenIndex((current) => (current === index ? null : current));
+    }
+  };
+
+  // Fetch the translation the first time it's needed for this message. Guarded
+  // so it runs once: assistant replies wait for tokens (i.e. not while
+  // streaming), user messages translate as soon as they exist; neither
+  // auto-retries after an error.
   useEffect(() => {
     if (
       showTranslation &&
-      message.role === 'assistant' &&
-      message.tokens !== undefined &&
       message.content.trim() &&
       message.translation === undefined &&
-      message.translationStatus === undefined
+      message.translationStatus === undefined &&
+      (message.role === 'user' || message.tokens !== undefined)
     ) {
       onRequestTranslation(message.id);
     }
@@ -77,6 +138,26 @@ export function MessageBubble({
     message.translationStatus,
     message.id,
     onRequestTranslation,
+  ]);
+
+  // Fetch a translation of the suggested correction once feedback arrives, so
+  // it's ready by the time the user expands the annotation.
+  useEffect(() => {
+    if (
+      showTranslation &&
+      message.feedback?.correction &&
+      message.correctionTranslation === undefined &&
+      message.correctionTranslationStatus === undefined
+    ) {
+      onRequestCorrectionTranslation(message.id);
+    }
+  }, [
+    showTranslation,
+    message.feedback,
+    message.correctionTranslation,
+    message.correctionTranslationStatus,
+    message.id,
+    onRequestCorrectionTranslation,
   ]);
 
   return (
@@ -98,6 +179,8 @@ export function MessageBubble({
             showRomaji={showRomaji}
             textSize={textSize}
             isUser={isUser}
+            activeTokenIndex={activeTokenIndex}
+            onTokenClick={(index) => void handleTokenClick(index)}
           />
         ) : (
           <p className={`jp-text whitespace-pre-wrap break-words ${TEXT_SIZE_CLASS[textSize]}`}>
@@ -114,79 +197,160 @@ export function MessageBubble({
       {!isUser && !isPending && (
         <div className="mt-1 flex items-center gap-3 px-1">
           <TtsButton
+            ref={ttsButtonRef}
             text={message.content}
+            tokens={message.tokens}
             ttsVoice={ttsVoice}
             ttsSpeed={ttsSpeed}
             ttsAutoPlay={ttsAutoPlay && !message.fromHistory}
             isStreaming={message.tokens === undefined && message.content !== ''}
+            onActiveTokenChange={setActiveTokenIndex}
           />
           {showTranslation && (
-            <Translation message={message} onRetry={() => onRequestTranslation(message.id)} />
+            <TranslationText
+              text={message.translation}
+              status={message.translationStatus}
+              onRetry={() => onRequestTranslation(message.id)}
+            />
           )}
         </div>
       )}
 
+      {isUser && showTranslation && (
+        <div className="mt-1 max-w-[80%] px-1 text-right">
+          <TranslationText
+            text={message.translation}
+            status={message.translationStatus}
+            onRetry={() => onRequestTranslation(message.id)}
+          />
+        </div>
+      )}
+
       {isUser && (message.feedback || message.feedbackStatus) && (
-        <FeedbackAnnotation message={message} onRetry={() => onRetryFeedback(message.id)} />
+        <FeedbackAnnotation
+          message={message}
+          showTranslation={showTranslation}
+          onRetry={() => onRetryFeedback(message.id)}
+          onRetryCorrectionTranslation={() => onRequestCorrectionTranslation(message.id)}
+        />
+      )}
+
+      {isUser && canRewind && (
+        <div className="mt-1 flex items-center px-1">
+          <button
+            type="button"
+            onClick={() => onRewind(message.id)}
+            aria-label="Edit this message"
+            title="Edit and resend"
+            className="flex items-center gap-1 text-zinc-600 transition-colors hover:text-zinc-300"
+          >
+            <EditIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
+/** Imperative handle so a sibling (the click-to-pronounce handler) can stop playback. */
+interface TtsButtonHandle {
+  stop: () => void;
+}
+
 /** Play/stop button that synthesises speech via VOICEVOX on demand (Phase 5). */
-function TtsButton({
-  text,
-  ttsVoice,
-  ttsSpeed,
-  ttsAutoPlay,
-  isStreaming,
-}: {
-  text: string;
-  ttsVoice: number | null;
-  ttsSpeed: TtsSpeed;
-  ttsAutoPlay: boolean;
-  isStreaming: boolean;
-}) {
+const TtsButton = forwardRef<
+  TtsButtonHandle,
+  {
+    text: string;
+    tokens?: Token[];
+    ttsVoice: number | null;
+    ttsSpeed: TtsSpeed;
+    ttsAutoPlay: boolean;
+    isStreaming: boolean;
+    onActiveTokenChange: (index: number | null) => void;
+  }
+>(function TtsButton(
+  { text, tokens, ttsVoice, ttsSpeed, ttsAutoPlay, isStreaming, onActiveTokenChange },
+  ref,
+) {
   const [ttsStatus, setTtsStatus] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const autoPlayFiredRef = useRef(false);
+  const tokenTimingsRef = useRef<(TokenTiming | null)[] | null>(null);
+
+  const stopHighlight = () => {
+    tokenTimingsRef.current = null;
+    onActiveTokenChange(null);
+  };
 
   const playAudio = async () => {
     if (ttsStatus === 'loading') return;
     setTtsStatus('loading');
     try {
-      const buffer = await synthesize(text, ttsVoice);
+      const { audio: buffer, moras } = await synthesize(text, ttsVoice);
       const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
       blobUrlRef.current = url;
       const audio = new Audio(url);
       audio.playbackRate = ttsSpeed;
       audioRef.current = audio;
+      tokenTimingsRef.current = tokens ? alignMorasToTokens(tokens, moras) : null;
       audio.onended = () => {
         setTtsStatus('idle');
+        stopHighlight();
         URL.revokeObjectURL(url);
         blobUrlRef.current = null;
       };
-      audio.onerror = () => setTtsStatus('idle');
+      audio.onerror = () => {
+        setTtsStatus('idle');
+        stopHighlight();
+      };
       await audio.play();
       setTtsStatus('playing');
     } catch {
       setTtsStatus('idle');
+      stopHighlight();
     }
   };
 
+  const stop = () => {
+    if (ttsStatus !== 'playing') return;
+    audioRef.current?.pause();
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    setTtsStatus('idle');
+    stopHighlight();
+  };
+
+  useImperativeHandle(ref, () => ({ stop }));
+
   const handleClick = () => {
     if (ttsStatus === 'playing') {
-      audioRef.current?.pause();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-      setTtsStatus('idle');
+      stop();
       return;
     }
     void playAudio();
   };
+
+  // While playing, highlight the token whose time range contains the audio's
+  // current playback position — independent of `playbackRate`, since
+  // `currentTime` advances through the same timeline regardless of speed.
+  useEffect(() => {
+    if (ttsStatus !== 'playing') return;
+    let frame: number;
+    const tick = () => {
+      const audio = audioRef.current;
+      const timings = tokenTimingsRef.current;
+      if (audio && timings) {
+        onActiveTokenChange(activeTokenAt(timings, audio.currentTime));
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [ttsStatus, onActiveTokenChange]);
 
   // Auto-play fires once per message, after streaming completes.
   useEffect(() => {
@@ -217,26 +381,5 @@ function TtsButton({
       )}
     </button>
   );
-}
+});
 
-/** The English translation shown beside the TTS button beneath an assistant reply (brief §6). */
-function Translation({ message, onRetry }: { message: Message; onRetry: () => void }) {
-  if (message.translationStatus === 'loading') {
-    return <p className="text-sm text-zinc-500">Translating…</p>;
-  }
-  if (message.translationStatus === 'error') {
-    return (
-      <button
-        type="button"
-        onClick={onRetry}
-        className="text-sm text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-300"
-      >
-        Translation failed — retry
-      </button>
-    );
-  }
-  if (message.translation) {
-    return <p className="text-sm text-zinc-400">{message.translation}</p>;
-  }
-  return null;
-}

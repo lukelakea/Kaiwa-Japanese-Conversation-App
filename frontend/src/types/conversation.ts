@@ -13,13 +13,17 @@ export type Formality = 'casual' | 'friendly' | 'polite' | 'formal';
 export type Initiative = 'ai_led' | 'balanced' | 'user_led';
 export type ConversationMode = 'free_talk' | 'scenario' | 'generated';
 
-/** A conversation scenario — curated or LLM-generated (brief §5). */
+/** A conversation scenario — curated, LLM-generated, or user-designed (brief §5). */
 export interface Scenario {
   title: string;
   title_ja: string;
   description: string;
   user_role: string;
   ai_role: string;
+  /** Free-form instructions for the AI to keep in mind for this conversation. */
+  notes?: string;
+  /** Optional objective the learner is working towards in this conversation. */
+  goal?: string;
 }
 
 export interface ConversationSettings {
@@ -40,12 +44,15 @@ export interface Message {
   tokens?: Token[];
   /** Grammatical constructions detected over `tokens`, attached with them. */
   grammar?: GrammarMatch[];
-  /** English translation of an assistant reply, fetched on demand (brief §6). */
+  /** English translation of this message's content, fetched on demand (brief §6). */
   translation?: string;
   translationStatus?: TranslationStatus;
   /** Critique of a user message, fetched in parallel with the reply (brief §8). */
   feedback?: Feedback;
   feedbackStatus?: FeedbackStatus;
+  /** English translation of `feedback.correction`, fetched on demand. */
+  correctionTranslation?: string;
+  correctionTranslationStatus?: TranslationStatus;
   /** True for messages loaded from saved history — suppresses auto-play. */
   fromHistory?: true;
 }

@@ -59,13 +59,15 @@ class ConversationSettings(BaseModel):
 
 
 class Scenario(BaseModel):
-    """A conversation scenario — either curated or LLM-generated (brief §5)."""
+    """A conversation scenario — curated, LLM-generated, or user-designed (brief §5)."""
 
     title: str
     title_ja: str
     description: str
     user_role: str
     ai_role: str
+    notes: str | None = None
+    goal: str | None = None
 
 
 class Message(BaseModel):
