@@ -1,6 +1,7 @@
-import { motion } from 'motion/react';
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
+import { translate } from '../../api/client';
 import { transitions } from '../../config/motion';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import type { ConversationStatus } from '../../hooks/useConversation';
@@ -10,15 +11,69 @@ interface MessageInputProps {
   status: ConversationStatus;
   onSend: (text: string) => void;
   onStop: () => void;
+  /** Text to load into the input — set when the user rewinds a message to edit it. */
+  draftText?: string;
+  /** Increments each time `draftText` should be applied, even if the text is unchanged. */
+  draftKey?: number;
+  /** Show a debounced English translation preview of the draft above the input. */
+  showTranslationPreview?: boolean;
 }
 
 const MAX_HEIGHT_PX = 200;
+const TRANSLATION_DEBOUNCE_MS = 600;
 
-export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
+export function MessageInput({
+  status,
+  onSend,
+  onStop,
+  draftText,
+  draftKey,
+  showTranslationPreview,
+}: MessageInputProps) {
   const [text, setText] = useState('');
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isStreaming = status === 'streaming';
   const canSend = text.trim().length > 0 && !isStreaming;
+
+  // Debounce a preview translation of the draft as the user types.
+  useEffect(() => {
+    const trimmed = text.trim();
+    if (!showTranslationPreview || !trimmed) {
+      setTranslation(null);
+      setIsTranslating(false);
+      return;
+    }
+
+    setIsTranslating(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      translate(trimmed, controller.signal)
+        .then((result) => {
+          setTranslation(result);
+          setIsTranslating(false);
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          setTranslation(null);
+          setIsTranslating(false);
+        });
+    }, TRANSLATION_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [text, showTranslationPreview]);
+
+  // Load a rewound message back into the input for editing.
+  useEffect(() => {
+    if (draftKey === undefined || draftKey === 0) return;
+    setText(draftText ?? '');
+    textareaRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
 
   const {
     status: recorderStatus,
@@ -57,7 +112,14 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
   const handleMicClick = async () => {
     if (isRecording) {
       stop((transcript) => {
-        setText(transcript);
+        // Append to any existing text rather than replacing it, so the user
+        // can build up a message across multiple recordings or combine
+        // typed and spoken input.
+        setText((current) => {
+          if (!current.trim()) return transcript;
+          const needsSpace = !/\s$/.test(current);
+          return current + (needsSpace ? ' ' : '') + transcript;
+        });
         // Focus the textarea so the user can review/edit before sending.
         textareaRef.current?.focus();
       });
@@ -80,6 +142,24 @@ export function MessageInput({ status, onSend, onStop }: MessageInputProps) {
           </button>
         </div>
       )}
+      <AnimatePresence>
+        {showTranslationPreview && text.trim() && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={transitions.spring}
+            className="mx-auto w-full max-w-3xl overflow-hidden px-4"
+          >
+            <p className="pt-2 text-sm text-zinc-500">
+              {translation ?? (isTranslating ? 'Translating…' : '')}
+              {translation && isTranslating && (
+                <span className="ml-1.5 text-zinc-600">…</span>
+              )}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-3">
         {/* Mic button — always shown; disabled while the AI is streaming */}
         <motion.button

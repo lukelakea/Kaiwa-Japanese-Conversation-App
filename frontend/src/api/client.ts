@@ -8,7 +8,7 @@
 
 import type { ChatRequest, ConversationSettings, Scenario } from '../types/conversation';
 import type { Feedback } from '../types/feedback';
-import type { LookupResult, TokenizedReading } from '../types/reading';
+import type { LookupResult, MoraTiming, TokenizedReading } from '../types/reading';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -185,16 +185,22 @@ export async function fetchSpeakers(signal?: AbortSignal): Promise<SpeakerOption
   }
 }
 
+/** Synthesised audio plus per-mora timing data for sync'd text highlighting. */
+export interface SynthesizeResult {
+  audio: ArrayBuffer;
+  moras: MoraTiming[];
+}
+
 /**
  * Synthesise Japanese text to speech via VOICEVOX (Phase 5).
- * Returns raw WAV bytes that the caller plays via the Web Audio API.
+ * Returns WAV audio (for the Web Audio API) plus per-mora timings.
  * Pass speakerId to override the server default; omit to use the server config.
  */
 export async function synthesize(
   text: string,
   speakerId?: number | null,
   signal?: AbortSignal,
-): Promise<ArrayBuffer> {
+): Promise<SynthesizeResult> {
   let response: Response;
   const body: Record<string, unknown> = { text };
   if (speakerId != null) body.speaker_id = speakerId;
@@ -210,7 +216,15 @@ export async function synthesize(
     throw new ApiError('Could not reach the Kaiwa server. Is the backend running?');
   }
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
-  return response.arrayBuffer();
+  const data = (await response.json()) as { audio: string; moras: MoraTiming[] };
+  return { audio: base64ToArrayBuffer(data.audio), moras: data.moras };
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
 export async function checkHealth(): Promise<boolean> {

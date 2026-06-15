@@ -26,7 +26,6 @@ is ever started — including from `npm run setup`.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import io
 import json
 import sqlite3
@@ -109,32 +108,36 @@ def download_and_extract_json(url: str, label: str) -> dict:
 # JMdict → rows
 # --------------------------------------------------------------------------- #
 
-# Lower score = more common. Derived from JMdict priority tags on kanji/kana forms.
-# nf01–nf48 are newspaper frequency bands (nf01 = top 500 words); they sit in the
-# range 1–48 so the most frequent band naturally beats the broad tier markers.
-_TAG_SCORES: dict[str, int] = {
-    "ichi1": 10,
-    "news1": 10,
-    "ichi2": 20,
-    "news2": 20,
-    "spec1": 30,
-    "gai1": 30,
-    "spec2": 40,
-    "gai2": 40,
-}
+# jmdict-simplified collapses JMdict's old priority tags (ichi1, news1, ...)
+# into a single `common` boolean per kanji/kana form, which isn't granular
+# enough to rank common-but-rare-kanji homophones (e.g. 事 vs 琴, both "common")
+# against each other. KANJIDIC2's per-kanji frequency rank (1-2500, lower =
+# more frequent) gives that finer signal, so priority = a coarse common/uncommon
+# tier plus the most-frequent kanji in the entry's kanji forms as a tiebreaker.
+_COMMON_SCORE = 0
+_UNCOMMON_SCORE = 5000
+_DEFAULT_KANJI_FREQ = 2500  # kana-only entries / kanji outside the top 2500
 
 
-def _priority_score(kanji_forms: list[dict], kana_forms: list[dict]) -> int:
-    """Return a frequency score for a JMdict entry (lower = more common, 99 = unranked)."""
-    best = 99
-    for form in kanji_forms + kana_forms:
-        for tag in form.get("tags", []):
-            if tag in _TAG_SCORES:
-                best = min(best, _TAG_SCORES[tag])
-            elif len(tag) == 4 and tag[:2] == "nf":
-                with contextlib.suppress(ValueError):
-                    best = min(best, int(tag[2:]))
-    return best
+def _is_kanji(ch: str) -> bool:
+    code = ord(ch)
+    return 0x3400 <= code <= 0x9FFF or 0xF900 <= code <= 0xFAFF or ch == "々"
+
+
+def _priority_score(
+    kanji_forms: list[dict], kana_forms: list[dict], kanji_freq: dict[str, int]
+) -> int:
+    """Return a rank score for a JMdict entry (lower = more common)."""
+    common = any(form.get("common") for form in kanji_forms + kana_forms)
+    base = _COMMON_SCORE if common else _UNCOMMON_SCORE
+
+    freq = _DEFAULT_KANJI_FREQ
+    for form in kanji_forms:
+        for ch in form["text"]:
+            if _is_kanji(ch):
+                freq = min(freq, kanji_freq.get(ch, _DEFAULT_KANJI_FREQ))
+
+    return base + freq
 
 
 def _gloss_texts(sense: dict) -> list[str]:
@@ -142,13 +145,13 @@ def _gloss_texts(sense: dict) -> list[str]:
 
 
 def jmdict_word_rows(
-    jmdict: dict,
+    jmdict: dict, kanji_freq: dict[str, int]
 ) -> Iterator[tuple[dict, list[str], int]]:
     """Yield ``(compact_entry, lookup_keys, priority)`` for each JMdict word.
 
     ``compact_entry`` is the trimmed record stored as JSON; ``lookup_keys`` is
     every kanji form and kana reading the entry can be found by; ``priority`` is
-    a frequency score (lower = more common) derived from JMdict priority tags.
+    a rank score (lower = more common, see :func:`_priority_score`).
     """
     pos_names: dict[str, str] = jmdict.get("tags", {})
 
@@ -171,13 +174,23 @@ def jmdict_word_rows(
 
         entry = {"kanji": kanji, "kana": kana, "senses": senses}
         keys = list(dict.fromkeys(kanji + kana))  # de-duped, order-preserving
-        priority = _priority_score(kanji_forms, kana_forms)
+        priority = _priority_score(kanji_forms, kana_forms, kanji_freq)
         yield entry, keys, priority
 
 
 # --------------------------------------------------------------------------- #
 # KANJIDIC2 → rows
 # --------------------------------------------------------------------------- #
+
+
+def kanji_frequency_lookup(kanjidic: dict) -> dict[str, int]:
+    """Map each kanji literal to its KANJIDIC2 frequency rank (1-2500, lower = more frequent)."""
+    lookup: dict[str, int] = {}
+    for char in kanjidic["characters"]:
+        freq = char.get("misc", {}).get("frequency")
+        if freq is not None:
+            lookup[char["literal"]] = freq
+    return lookup
 
 
 def kanjidic_kanji_rows(kanjidic: dict) -> Iterator[tuple[str, dict]]:
@@ -242,9 +255,11 @@ def build_database(db_path: Path, jmdict: dict, kanjidic: dict, version: str) ->
     try:
         conn.executescript(_SCHEMA)
 
+        kanji_freq = kanji_frequency_lookup(kanjidic)
+
         log("  writing words …")
         word_count = 0
-        for entry, keys, priority in jmdict_word_rows(jmdict):
+        for entry, keys, priority in jmdict_word_rows(jmdict, kanji_freq):
             cursor = conn.execute(
                 "INSERT INTO words (priority, data) VALUES (?, ?)",
                 (priority, json.dumps(entry, ensure_ascii=False)),

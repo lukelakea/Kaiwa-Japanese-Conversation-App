@@ -18,6 +18,7 @@ import { useAppSettings } from './hooks/useAppSettings';
 import { useConversation } from './hooks/useConversation';
 import { useSavedConversations } from './hooks/useSavedConversations';
 import { useSavedGrammar } from './hooks/useSavedGrammar';
+import { useSavedScenarios } from './hooks/useSavedScenarios';
 import { useSavedVocab } from './hooks/useSavedVocab';
 import type { ConversationMode, ConversationSettings, Scenario } from './types/conversation';
 import type { SavedConversation } from './types/history';
@@ -53,22 +54,34 @@ export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversationStartedAt = useRef<string | null>(null);
 
+  // Text restored to the input when the user rewinds their last message to
+  // edit it. `key` increments on each rewind so the same text can be
+  // reapplied even if it's identical to what's already in the input.
+  const [draft, setDraft] = useState<{ key: number; text: string }>({ key: 0, text: '' });
+
   const {
     messages,
     status,
     error,
     send,
     startScenario,
+    rewindToMessage,
     stop,
     reset,
     restore,
     requestTranslation,
+    requestCorrectionTranslation,
     retryFeedback,
   } = useConversation();
   const savedVocab = useSavedVocab();
   const savedGrammar = useSavedGrammar();
   const { conversations, save: saveConversation, remove: removeConversation } =
     useSavedConversations();
+  const {
+    scenarios: savedScenarios,
+    save: saveScenario,
+    remove: removeScenario,
+  } = useSavedScenarios();
 
   // Auto-save after each complete exchange (skip during streaming to avoid
   // hundreds of partial writes; translation/feedback patches fire afterwards).
@@ -104,15 +117,26 @@ export default function App() {
   }, []);
 
   const handleStartScenario = useCallback(
-    async (scenario: Scenario, mode: ConversationMode) => {
+    async (scenario: Scenario, mode: ConversationMode, scenarioSettings?: ConversationSettings) => {
       const id = `conv-${Date.now()}`;
       setConversationId(id);
       conversationStartedAt.current = new Date().toISOString();
       setActiveMode(mode);
       setActiveScenario(scenario);
-      await startScenario(scenario, settings, mode);
+      const effectiveSettings = scenarioSettings ?? settings;
+      if (scenarioSettings) setSettings(scenarioSettings);
+      await startScenario(scenario, effectiveSettings, mode);
     },
     [settings, startScenario],
+  );
+
+  const handleRewind = useCallback(
+    (id: string) => {
+      const text = rewindToMessage(id);
+      if (text === null) return;
+      setDraft((prev) => ({ key: prev.key + 1, text }));
+    },
+    [rewindToMessage],
   );
 
   const handleRestoreConversation = useCallback(
@@ -169,16 +193,24 @@ export default function App() {
                 ttsVoice={appSettings.ttsVoice}
                 ttsSpeed={appSettings.ttsSpeed}
                 ttsAutoPlay={appSettings.ttsAutoPlay}
+                canRewind={status !== 'streaming'}
                 onRequestTranslation={requestTranslation}
+                onRequestCorrectionTranslation={requestCorrectionTranslation}
                 onRetryFeedback={(id) => retryFeedback(id, settings)}
+                onRewind={handleRewind}
               />
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
               <ModeSelector
                 settings={settings}
+                savedScenarios={savedScenarios}
+                onSaveScenario={saveScenario}
+                onDeleteScenario={removeScenario}
                 onStartFreeTalk={handleStartFreeTalk}
-                onStartScenario={(scenario, mode) => void handleStartScenario(scenario, mode)}
+                onStartScenario={(scenario, mode, scenarioSettings) =>
+                  void handleStartScenario(scenario, mode, scenarioSettings)
+                }
               />
             </main>
           )}
@@ -192,6 +224,9 @@ export default function App() {
                 void send(text, settings, activeMode ?? 'free_talk', activeScenario ?? undefined)
               }
               onStop={stop}
+              draftText={draft.text}
+              draftKey={draft.key}
+              showTranslationPreview={appSettings.inputTranslation}
             />
           )}
 

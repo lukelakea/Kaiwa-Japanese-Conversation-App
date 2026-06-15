@@ -46,3 +46,4 @@ credentials.json
 # ---- Logs ----
 *.log
 npm-debug.log*
+VOICEVOX.lnk

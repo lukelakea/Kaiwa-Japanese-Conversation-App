@@ -39,6 +39,7 @@ _POS_PREFIX: dict[str, str] = {
     "adjective": "adjective",
     "adjectival noun": "adjectival noun",
     "adverb": "adverb",
+    "adnominal": "pre-noun adjectival",
     "conjunction": "conjunction",
     "interjection": "interjection",
     "prefix": "prefix",
@@ -99,7 +100,7 @@ class Dictionary:
                 if word_id in seen_ids:
                     continue
                 seen_ids.add(word_id)
-                entry = _parse_word(data)
+                entry = _parse_word(data, key)
                 if pos_filter and not any(
                     p in pos_filter for sense in entry.senses for p in sense.part_of_speech
                 ):
@@ -139,13 +140,19 @@ def _pos_rank(entry: WordEntry, pos_prefix: str) -> int:
     return 1
 
 
-def _parse_word(data: str) -> WordEntry:
+def _parse_word(data: str, key: str) -> WordEntry:
     record = json.loads(data)
     kanji_forms: list[str] = record.get("kanji", [])
     kana_forms: list[str] = record.get("kana", [])
+    # An entry can bundle multiple kanji forms or readings (e.g. 端 = はし/はじ/はな
+    # all sharing one set of senses). Prefer whichever form matched the lookup key
+    # so the popup shows the reading the user actually hovered, not just the first.
+    fallback_text = kanji_forms[0] if kanji_forms else (kana_forms[0] if kana_forms else "")
+    text = key if key in kanji_forms else fallback_text
+    reading = key if key in kana_forms else (kana_forms[0] if kana_forms else "")
     return WordEntry(
-        text=kanji_forms[0] if kanji_forms else (kana_forms[0] if kana_forms else ""),
-        reading=kana_forms[0] if kana_forms else "",
+        text=text,
+        reading=reading,
         senses=[
             WordSense(part_of_speech=sense.get("pos", []), glosses=sense.get("glosses", []))
             for sense in record.get("senses", [])

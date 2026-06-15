@@ -38,11 +38,18 @@ _DIFFICULTY: dict[Difficulty, str] = {
     Difficulty.beginner: (
         "Use very simple Japanese: short sentences, the most common everyday "
         "vocabulary, and basic grammar. Avoid rare kanji, idioms, and complex "
-        "constructions. Prioritise being easy to follow."
+        "constructions. One idea per sentence — stick to plain です/ます forms, "
+        "simple verbs, and basic particles (は/が/を/に/で/と). Avoid stacking "
+        "multiple grammar points in one sentence: no conditionals (〜たら/〜ば/〜と), "
+        "potential form, explanatory んです, or giving/receiving "
+        "(あげる/くれる/もらう) constructions. Prioritise being easy to follow."
     ),
     Difficulty.intermediate: (
         "Use everyday conversational Japanese with moderate vocabulary and a mix "
-        "of simple and compound sentences. Comfortable for an improving learner."
+        "of simple and compound sentences. Common intermediate grammar (て-form "
+        "requests, conditionals, potential form, explanatory んです) is fine, but "
+        "don't stack more than one of these per sentence. Comfortable for an "
+        "improving learner."
     ),
     Difficulty.advanced: (
         "Use rich, natural Japanese: varied vocabulary, idiomatic expressions, "
@@ -103,7 +110,7 @@ _MEMORY = (
 
 
 def _scenario_section(scenario: Scenario) -> str:
-    return (
+    section = (
         f"You are playing the role of {scenario.ai_role}.\n"
         f"Situation: {scenario.description}\n"
         f"Your conversation partner is playing: {scenario.user_role}.\n"
@@ -111,6 +118,15 @@ def _scenario_section(scenario: Scenario) -> str:
         f"greeting your partner and naturally setting the scene in character — one "
         f"to three sentences. Otherwise, respond naturally to the ongoing conversation."
     )
+    if scenario.goal:
+        section += (
+            f"\n\nThe learner's goal for this conversation: {scenario.goal}\n"
+            f"React naturally as your character would — don't make this trivially "
+            f"easy or simply hand it to them."
+        )
+    if scenario.notes:
+        section += f"\n\nAdditional instructions for this conversation: {scenario.notes}"
+    return section
 
 
 def compose_system_prompt(

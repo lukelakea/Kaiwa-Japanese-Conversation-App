@@ -15,6 +15,7 @@ import threading
 
 from sudachipy import Dictionary, SplitMode
 
+from app.japanese.kana import kata_to_hira
 from app.models.reading import FuriganaSegment, Token
 
 # Map SudachiPy's top-level (Japanese) part-of-speech to a compact English
@@ -106,18 +107,6 @@ def _has_kanji(text: str) -> bool:
     return any(_is_kanji(ch) for ch in text)
 
 
-def _kata_to_hira(text: str) -> str:
-    out = []
-    for ch in text:
-        code = ord(ch)
-        # Katakana block → hiragana, leaving the long-vowel mark (ー) untouched.
-        if 0x30A1 <= code <= 0x30F6:
-            out.append(chr(code - 0x60))
-        else:
-            out.append(ch)
-    return "".join(out)
-
-
 def _furigana_segments(surface: str, reading: str) -> list[FuriganaSegment]:
     """Align ``reading`` (hiragana) onto ``surface``, annotating only kanji runs.
 
@@ -137,7 +126,7 @@ def _furigana_segments(surface: str, reading: str) -> list[FuriganaSegment]:
         head < len(s_chars)
         and head < len(r_chars)
         and not _is_kanji(s_chars[head])
-        and _kata_to_hira(s_chars[head]) == r_chars[head]
+        and kata_to_hira(s_chars[head]) == r_chars[head]
     ):
         head += 1
 
@@ -147,7 +136,7 @@ def _furigana_segments(surface: str, reading: str) -> list[FuriganaSegment]:
         tail < len(s_chars) - head
         and tail < len(r_chars) - head
         and not _is_kanji(s_chars[-1 - tail])
-        and _kata_to_hira(s_chars[-1 - tail]) == r_chars[-1 - tail]
+        and kata_to_hira(s_chars[-1 - tail]) == r_chars[-1 - tail]
     ):
         tail += 1
 
@@ -207,7 +196,7 @@ class Tokenizer:
         for morpheme in morphemes:
             surface = morpheme.surface()
             lemma = morpheme.dictionary_form()
-            reading = _kata_to_hira(morpheme.reading_form())
+            reading = kata_to_hira(morpheme.reading_form())
             pos_tuple = morpheme.part_of_speech()
             pos = _POS_MAP.get(pos_tuple[0], "other")
             interactive = pos in _INTERACTIVE_POS or _has_kanji(surface)

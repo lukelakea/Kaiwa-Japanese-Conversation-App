@@ -7,12 +7,12 @@ fallbacks so a regression in the alignment is caught without a live model.
 
 from __future__ import annotations
 
+from app.japanese.kana import kata_to_hira
 from app.japanese.tokenizer import (
     Tokenizer,
     _furigana_segments,
     _has_kanji,
     _is_kanji,
-    _kata_to_hira,
 )
 
 
@@ -21,10 +21,10 @@ def _as_tuples(surface: str, reading: str) -> list[tuple[str, str | None]]:
 
 
 def test_kata_to_hira_converts_katakana_only() -> None:
-    assert _kata_to_hira("タベル") == "たべる"
+    assert kata_to_hira("タベル") == "たべる"
     # Long-vowel mark and non-katakana pass through untouched.
-    assert _kata_to_hira("コーヒー") == "こーひー"
-    assert _kata_to_hira("食べる") == "食べる"
+    assert kata_to_hira("コーヒー") == "こーひー"
+    assert kata_to_hira("食べる") == "食べる"
 
 
 def test_is_kanji_and_has_kanji() -> None:

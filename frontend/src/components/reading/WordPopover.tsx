@@ -176,12 +176,12 @@ function DictionaryBody({ words, kanji }: { words: WordEntry[]; kanji: KanjiEntr
               <ol className="mt-0.5 list-inside list-decimal text-zinc-300 marker:text-zinc-600">
                 {word.senses.slice(0, 4).map((sense, j) => (
                   <li key={j}>
+                    {sense.glosses.slice(0, 4).join('; ')}
                     {sense.partOfSpeech.length > 0 && (
-                      <span className="mr-1 text-xs italic text-zinc-500">
-                        {sense.partOfSpeech[0]}
+                      <span className="ml-1 text-xs italic text-zinc-500">
+                        ({sense.partOfSpeech[0]})
                       </span>
                     )}
-                    {sense.glosses.slice(0, 4).join('; ')}
                   </li>
                 ))}
               </ol>

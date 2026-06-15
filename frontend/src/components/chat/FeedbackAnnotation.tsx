@@ -4,10 +4,13 @@ import { useSavedGrammarContext } from '../../context/SavedGrammarContext';
 import type { Message } from '../../types/conversation';
 import type { Feedback, FeedbackLabel } from '../../types/feedback';
 import { BookmarkIcon, ChatIcon, CheckIcon, ChevronRightIcon } from '../ui/icons';
+import { TranslationText } from './TranslationText';
 
 interface FeedbackAnnotationProps {
   message: Message;
+  showTranslation: boolean;
   onRetry: () => void;
+  onRetryCorrectionTranslation: () => void;
 }
 
 /**
@@ -16,7 +19,12 @@ interface FeedbackAnnotationProps {
  * affordance expands on demand to show the English explanation, the corrected
  * Japanese, and — for grammar corrections — a save action (brief §7).
  */
-export function FeedbackAnnotation({ message, onRetry }: FeedbackAnnotationProps) {
+export function FeedbackAnnotation({
+  message,
+  showTranslation,
+  onRetry,
+  onRetryCorrectionTranslation,
+}: FeedbackAnnotationProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (message.feedbackStatus === 'loading') {
@@ -71,13 +79,30 @@ export function FeedbackAnnotation({ message, onRetry }: FeedbackAnnotationProps
         />
       </button>
 
-      {expanded && <FeedbackDetail message={message} feedback={feedback} />}
+      {expanded && (
+        <FeedbackDetail
+          message={message}
+          feedback={feedback}
+          showTranslation={showTranslation}
+          onRetryCorrectionTranslation={onRetryCorrectionTranslation}
+        />
+      )}
     </div>
   );
 }
 
 /** The expanded body: explanation, corrected Japanese, and grammar save. */
-function FeedbackDetail({ message, feedback }: { message: Message; feedback: Feedback }) {
+function FeedbackDetail({
+  message,
+  feedback,
+  showTranslation,
+  onRetryCorrectionTranslation,
+}: {
+  message: Message;
+  feedback: Feedback;
+  showTranslation: boolean;
+  onRetryCorrectionTranslation: () => void;
+}) {
   const showGrammarSave = feedback.labels.includes('grammar') && !!feedback.correction;
 
   return (
@@ -88,6 +113,14 @@ function FeedbackDetail({ message, feedback }: { message: Message; feedback: Fee
         <div>
           <p className="mb-0.5 text-xs uppercase tracking-wide text-zinc-500">Suggested</p>
           <p className="jp-text text-[1.02rem] text-zinc-100">{feedback.correction}</p>
+          {showTranslation && (
+            <TranslationText
+              text={message.correctionTranslation}
+              status={message.correctionTranslationStatus}
+              onRetry={onRetryCorrectionTranslation}
+              className="mt-0.5"
+            />
+          )}
         </div>
       )}
 

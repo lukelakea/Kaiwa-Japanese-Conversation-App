@@ -15,6 +15,10 @@ interface TokenizedTextProps {
   showRomaji: boolean;
   textSize: TextSize;
   isUser?: boolean;
+  /** Index of the token currently being spoken by TTS, if any (Phase 5). */
+  activeTokenIndex?: number | null;
+  /** Called when a token is clicked, to play back its pronunciation (Phase 5). */
+  onTokenClick?: (index: number) => void;
 }
 
 /**
@@ -32,6 +36,8 @@ export function TokenizedText({
   showRomaji,
   textSize,
   isUser = false,
+  activeTokenIndex = null,
+  onTokenClick,
 }: TokenizedTextProps) {
   const [active, setActive] = useState<{ index: number; anchor: DOMRect } | null>(null);
   const closeTimer = useRef<number | null>(null);
@@ -115,9 +121,22 @@ export function TokenizedText({
             onPointerLeave={scheduleClose}
             onFocus={(e) => open(index, e.currentTarget)}
             onBlur={scheduleClose}
-            className={`cursor-help rounded transition-colors focus:outline-none ${tokenClass(index)}`}
+            onClick={() => onTokenClick?.(index)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onTokenClick?.(index);
+              }
+            }}
+            className={`cursor-pointer rounded transition-colors focus:outline-none ${tokenClass(index)}`}
           >
-            <TokenSurface token={token} showFurigana={showFurigana} showRomaji={showRomaji} />
+            <TokenSurface
+              token={token}
+              showFurigana={showFurigana}
+              showRomaji={showRomaji}
+              isUser={isUser}
+              isSpeaking={activeTokenIndex === index}
+            />
           </span>
         ) : (
           <TokenSurface
@@ -125,6 +144,8 @@ export function TokenizedText({
             token={token}
             showFurigana={showFurigana}
             showRomaji={showRomaji}
+            isUser={isUser}
+            isSpeaking={activeTokenIndex === index}
           />
         ),
       )}
@@ -152,25 +173,34 @@ function TokenSurface({
   token,
   showFurigana,
   showRomaji,
+  isUser,
+  isSpeaking = false,
 }: {
   token: Token;
   showFurigana: boolean;
   showRomaji: boolean;
+  isUser: boolean;
+  isSpeaking?: boolean;
 }) {
+  const onAccent = isUser ? 'on-accent' : '';
+  // Highlight only the base text, not the furigana/romaji ruby annotations.
+  const speakingClass = isSpeaking ? 'rounded bg-accent-500/30' : '';
   const segments = token.furigana.map((segment, i) =>
     segment.ruby && showFurigana ? (
-      <ruby key={i}>
-        {segment.text}
+      <ruby key={i} className={onAccent}>
+        <span className={speakingClass}>{segment.text}</span>
         <rt>{segment.ruby}</rt>
       </ruby>
     ) : (
-      <span key={i}>{segment.text}</span>
+      <span key={i} className={speakingClass}>
+        {segment.text}
+      </span>
     ),
   );
 
   if (showRomaji) {
     return (
-      <ruby className="romaji-ruby">
+      <ruby className={`romaji-ruby ${onAccent}`}>
         {segments}
         <rt>{toRomaji(token.reading)}</rt>
       </ruby>

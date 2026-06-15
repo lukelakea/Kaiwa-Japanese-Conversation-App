@@ -174,6 +174,25 @@ export function useConversation() {
     [messages, status, appendDelta, dropIfEmpty, tokenizeMessage, generateFeedback],
   );
 
+  // Rewind to a user message: drop it and everything after it (normally just
+  // the assistant's reply), returning its text so the caller can restore it
+  // to the input for editing. Only valid for the most recent user message —
+  // the caller is expected to enforce that, since rewinding further back
+  // would silently discard more of the conversation.
+  const rewindToMessage = useCallback(
+    (id: string): string | null => {
+      if (status === 'streaming') return null;
+      const msgs = messagesRef.current;
+      const index = msgs.findIndex((m) => m.id === id);
+      if (index < 0 || msgs[index].role !== 'user') return null;
+
+      setMessages((prev) => prev.slice(0, index));
+      setError(null);
+      return msgs[index].content;
+    },
+    [status],
+  );
+
   // Trigger the AI's opening message for a scenario (brief §5). Called once
   // when a scenario is started — the messages list is empty at this point so
   // the AI receives only the system prompt and opens the scene in character.
@@ -222,13 +241,14 @@ export function useConversation() {
     [status, appendDelta, dropIfEmpty, tokenizeMessage],
   );
 
-  // Translate an assistant reply on demand (brief §6 step 3). Stable identity:
-  // reads current messages from a ref so toggling translation never re-creates
-  // this callback (which would retrigger the effect that calls it).
+  // Translate a message (assistant reply or user message) on demand (brief §6
+  // step 3). Stable identity: reads current messages from a ref so toggling
+  // translation never re-creates this callback (which would retrigger the
+  // effect that calls it).
   const requestTranslation = useCallback(
     async (id: string) => {
       const target = messagesRef.current.find((m) => m.id === id);
-      if (!target || target.role !== 'assistant' || !target.content.trim()) return;
+      if (!target || !target.content.trim()) return;
       if (target.translation !== undefined || target.translationStatus === 'loading') return;
 
       patchMessage(id, { translationStatus: 'loading' });
@@ -237,6 +257,29 @@ export function useConversation() {
         patchMessage(id, { translation, translationStatus: undefined });
       } catch {
         patchMessage(id, { translationStatus: 'error' });
+      }
+    },
+    [patchMessage],
+  );
+
+  // Translate a feedback correction on demand — the same opt-in translation
+  // call as `requestTranslation`, but for the suggested Japanese rewrite shown
+  // in the feedback annotation rather than the message itself.
+  const requestCorrectionTranslation = useCallback(
+    async (id: string) => {
+      const target = messagesRef.current.find((m) => m.id === id);
+      const correction = target?.feedback?.correction;
+      if (!target || !correction?.trim()) return;
+      if (target.correctionTranslation !== undefined || target.correctionTranslationStatus === 'loading') {
+        return;
+      }
+
+      patchMessage(id, { correctionTranslationStatus: 'loading' });
+      try {
+        const correctionTranslation = await translate(correction);
+        patchMessage(id, { correctionTranslation, correctionTranslationStatus: undefined });
+      } catch {
+        patchMessage(id, { correctionTranslationStatus: 'error' });
       }
     },
     [patchMessage],
@@ -264,10 +307,12 @@ export function useConversation() {
     error,
     send,
     startScenario,
+    rewindToMessage,
     stop,
     reset,
     restore,
     requestTranslation,
+    requestCorrectionTranslation,
     retryFeedback,
   };
 }

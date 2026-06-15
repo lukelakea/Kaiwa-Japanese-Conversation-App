@@ -1,18 +1,20 @@
 """TTS (text-to-speech) endpoint — Phase 5.
 
 Calls the VOICEVOX local HTTP API in two steps (audio_query then synthesis)
-and returns raw WAV bytes. VOICEVOX must be running on the configured URL
-before this endpoint is called.
+and returns the WAV audio alongside per-mora timing data extracted from the
+audio_query, so the frontend can highlight text in sync with playback.
+VOICEVOX must be running on the configured URL before this endpoint is called.
 """
 
+import base64
 import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.config import Settings, get_settings
+from app.japanese.kana import kata_to_hira
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,6 +29,42 @@ class TTSRequest(BaseModel):
 class SpeakerOption(BaseModel):
     id: int
     name: str
+
+
+class MoraTiming(BaseModel):
+    """A unit of pronunciation with its hiragana reading and time range (seconds)."""
+
+    text: str
+    start: float
+    end: float
+
+
+class TTSResponse(BaseModel):
+    audio: str  # base64-encoded WAV
+    moras: list[MoraTiming]
+
+
+def _extract_mora_timings(query: dict) -> list[MoraTiming]:
+    """Flatten an audio_query's accent phrases into a timeline of mora readings.
+
+    Each mora's duration is its consonant + vowel length; pauses between accent
+    phrases have no reading of their own, so their duration is folded into the
+    preceding mora's end time rather than emitted as a separate entry.
+    """
+    timings: list[MoraTiming] = []
+    t = query.get("prePhonemeLength") or 0.0
+    for phrase in query["accent_phrases"]:
+        for mora in phrase["moras"]:
+            duration = (mora.get("consonant_length") or 0.0) + (mora.get("vowel_length") or 0.0)
+            timings.append(MoraTiming(text=kata_to_hira(mora["text"]), start=t, end=t + duration))
+            t += duration
+        pause = phrase.get("pause_mora")
+        if pause:
+            duration = pause.get("vowel_length") or 0.0
+            if timings:
+                timings[-1].end += duration
+            t += duration
+    return timings
 
 
 @router.get("/tts/speakers")
@@ -62,8 +100,8 @@ async def list_speakers(settings: Settings = Depends(get_settings)) -> list[Spea
 async def synthesize(
     body: TTSRequest,
     settings: Settings = Depends(get_settings),
-) -> Response:
-    """Convert Japanese text to speech via VOICEVOX and return WAV audio."""
+) -> TTSResponse:
+    """Convert Japanese text to speech via VOICEVOX, returning audio plus mora timings."""
     if not body.text.strip():
         raise HTTPException(status_code=422, detail="Text must not be empty.")
 
@@ -90,6 +128,8 @@ async def synthesize(
                 detail=f"VOICEVOX audio_query returned {exc.response.status_code}.",
             ) from exc
 
+        query = q_resp.json()
+
         # Step 2: synthesise audio from the query.
         try:
             synth_resp = await client.post(
@@ -106,4 +146,7 @@ async def synthesize(
                 detail=f"VOICEVOX synthesis returned {exc.response.status_code}.",
             ) from exc
 
-    return Response(content=synth_resp.content, media_type="audio/wav")
+    return TTSResponse(
+        audio=base64.b64encode(synth_resp.content).decode("ascii"),
+        moras=_extract_mora_timings(query),
+    )
