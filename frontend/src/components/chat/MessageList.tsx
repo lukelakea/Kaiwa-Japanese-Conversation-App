@@ -16,12 +16,13 @@ interface MessageListProps {
   ttsVoice: number | null;
   ttsSpeed: TtsSpeed;
   ttsAutoPlay: boolean;
-  /** Whether the most recent user message can be edited and resent. */
+  /** Whether user messages can currently be edited and resent (not while streaming). */
   canRewind: boolean;
   onRequestTranslation: (id: string) => void;
   onRequestCorrectionTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
   onRewind: (id: string) => void;
+  onRegenerate: (id: string) => void;
 }
 
 export function MessageList({
@@ -38,6 +39,7 @@ export function MessageList({
   onRequestCorrectionTranslation,
   onRetryFeedback,
   onRewind,
+  onRegenerate,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,11 +52,6 @@ export function MessageList({
     return <EmptyState />;
   }
 
-  const lastUserIndex = messages.reduce(
-    (acc, m, i) => (m.role === 'user' ? i : acc),
-    -1,
-  );
-
   return (
     <motion.div
       variants={listStagger}
@@ -62,7 +59,7 @@ export function MessageList({
       animate="visible"
       className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6"
     >
-      {messages.map((message, index) => (
+      {messages.map((message) => (
         <motion.div key={message.id} variants={bubbleVariants}>
           <MessageBubble
             message={message}
@@ -73,11 +70,12 @@ export function MessageList({
             ttsVoice={ttsVoice}
             ttsSpeed={ttsSpeed}
             ttsAutoPlay={ttsAutoPlay}
-            canRewind={canRewind && index === lastUserIndex}
+            canRewind={canRewind}
             onRequestTranslation={onRequestTranslation}
             onRequestCorrectionTranslation={onRequestCorrectionTranslation}
             onRetryFeedback={onRetryFeedback}
             onRewind={onRewind}
+            onRegenerate={onRegenerate}
           />
         </motion.div>
       ))}

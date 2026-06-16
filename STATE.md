@@ -1,8 +1,14 @@
 # STATE.md — Kaiwa project snapshot
 
-**Last updated:** end of session 5 (Phase 5).  
-**Current phase:** Phase 5 complete. All phases of v1.0 are now done.  
-Read `PROJECT_BRIEF.md` for the full product vision and phase plan.
+**Last updated:** post-1.0 enhancement pass (conversation history, grammar
+construction detection, TTS word-highlight, app settings panel, romaji,
+rewind/regenerate, custom scenarios).  
+**Current phase:** All phases of v1.0 (0–5) complete and hardened. Work since is
+a series of post-1.0 refinements layered onto the finished app — see the
+**Post-1.0 enhancements** section below. Some of this work is committed; some is
+still in the working tree (see `git status`).  
+Read `PROJECT_BRIEF.md` for the full product vision and phase plan (it is the
+frozen as-conceived brief; deviations and everything built since live here).
 
 > **Heads-up for Phase 5:** restart the backend after pulling so the new
 > `/api/stt` and `/api/tts` routes are registered, and run `npm run setup`
@@ -72,16 +78,22 @@ npm run build          # TS type-check + Vite production build
 │       ├── models/
 │       │   ├── conversation.py   Domain enums + Pydantic models; Phase 4 adds Scenario,
 │       │   │                     GenerateScenarioRequest/Response; ChatRequest gains scenario field
-│       │   ├── reading.py        Phase 2: Token/Furigana, Word/Kanji lookup, Translate models
+│       │   ├── reading.py        Phase 2: Token/Furigana, Word/Kanji lookup, Translate models;
+│       │   │                     post-1.0 adds GrammarMatch + Token conjugationForm/conjugationType
 │       │   └── feedback.py       Phase 3: FeedbackLabel, FeedbackRequest/Response
 │       ├── llm/
 │       │   ├── base.py           LLMProvider ABC, LLMMessage, GenerationOptions (json_mode), LLMError
 │       │   ├── ollama_provider.py  Streams /api/chat, error translation, timeout config
 │       │   ├── factory.py        build_provider(settings) — only place that names providers
 │       │   └── __init__.py       Re-exports the public surface
-│       ├── japanese/             Phase 2: deterministic JP tooling (no LLM)
-│       │   ├── tokenizer.py      SudachiPy wrapper: tokens, lemmas, furigana alignment
-│       │   ├── dictionary.py     Read-only SQLite lookup (JMdict words + KANJIDIC2 kanji)
+│       ├── japanese/             Phase 2+: deterministic JP tooling (no LLM)
+│       │   ├── tokenizer.py      SudachiPy wrapper: tokens, lemmas, furigana alignment,
+│       │   │                     conjugation form/type labels, fused-particle re-merge
+│       │   ├── grammar.py        Post-1.0: rule-based multi-token construction detection
+│       │   │                     (〜ている, 〜なきゃ, 〜ば〜ほど…) → GrammarMatch list
+│       │   ├── dictionary.py     Read-only SQLite lookup (JMdict words + KANJIDIC2 kanji);
+│       │   │                     priority-ranked, POS-aware, common-kana homophone suppression
+│       │   ├── kana.py           katakana→hiragana helper shared across the JP modules
 │       │   └── __init__.py       Re-exports Tokenizer, Dictionary
 │       ├── prompts/
 │       │   ├── system_prompt.py  compose_system_prompt(settings, mode, scenario?) — scenario
@@ -91,10 +103,13 @@ npm run build          # TS type-check + Vite production build
 │       │   └── scenario_prompt.py  Phase 4: GENERATE_SCENARIO_SYSTEM_PROMPT + input composer
 │       └── api/
 │           ├── chat.py           POST /api/chat — peek-first stream, 502 on startup errors
-│           ├── reading.py        POST /api/tokenize, GET /api/lookup (threadpool-dispatched)
+│           ├── reading.py        POST /api/tokenize (tokens + grammar matches), GET /api/lookup
 │           ├── translate.py      POST /api/translate — second LLM call, JSON reply, 502 on error
 │           ├── feedback.py       POST /api/feedback — parallel critique, json_mode, defensive parse
-│           └── scenario.py       POST /api/scenario/generate — Phase 4: LLM-generated scenario
+│           ├── scenario.py       POST /api/scenario/generate — Phase 4: LLM-generated scenario
+│           ├── stt.py            Phase 5: POST /api/stt — multipart audio → faster-whisper transcript
+│           └── tts.py            Phase 5: POST /api/tts (WAV + per-mora timings),
+│                                 GET /api/tts/speakers (VOICEVOX speaker list)
 │   └── data/dictionary.sqlite    Compiled JMdict + KANJIDIC2 (git-ignored, built by script)
 │
 ├── frontend/
@@ -112,8 +127,13 @@ npm run build          # TS type-check + Vite production build
 │       ├── types/
 │       │   ├── conversation.ts   TS types mirroring backend models; Phase 4 adds Scenario,
 │       │   │                     ChatRequest gains optional scenario field
-│       │   ├── reading.ts        Phase 2: Token, FuriganaSegment, Word/Kanji entries, SavedWord
-│       │   └── feedback.ts       Phase 3: FeedbackLabel, Feedback, FeedbackStatus, SavedGrammar
+│       │   ├── reading.ts        Phase 2: Token, FuriganaSegment, Word/Kanji entries, SavedWord;
+│       │   │                     post-1.0 adds GrammarMatch, MoraTiming, conjugation fields
+│       │   ├── feedback.ts       Phase 3: FeedbackLabel, Feedback, FeedbackStatus, SavedGrammar
+│       │   ├── scenario.ts       Post-1.0: SavedScenario (user-designed scenario + settings preset)
+│       │   ├── history.ts        Post-1.0: SavedConversation (archived conversation snapshot)
+│       │   └── settings.ts       Post-1.0: AppSettings (text size, TTS voice/speed/autoplay, input
+│       │                         translation) + DEFAULT_APP_SETTINGS + TEXT_SIZE_CLASS map
 │       ├── config/
 │       │   ├── settings.ts   Option metadata arrays + DEFAULT_SETTINGS (data-driven)
 │       │   └── scenarios.ts  Phase 4: CURATED_SCENARIOS (10 scenarios), CuratedScenario type,
@@ -125,43 +145,66 @@ npm run build          # TS type-check + Vite production build
 │       │   └── client.ts     streamChat(), tokenize(), lookup(), translate(), requestFeedback(),
 │       │                     generateScenario(), checkHealth()
 │       ├── hooks/
-│       │   ├── useConversation.ts  Phase 4: send() gains mode+scenario params; adds startScenario()
-│       │   │                       for AI-first scenario opening (messages:[])
+│       │   ├── useConversation.ts  Conversation state; send/startScenario plus post-1.0
+│       │   │                       rewindToMessage, regenerateReply, restore, requestCorrectionTranslation
 │       │   ├── useSavedVocab.ts    localStorage-backed saved words (has/save/remove)
 │       │   ├── useSavedGrammar.ts  localStorage-backed saved grammar points (has/save/remove)
+│       │   ├── useSavedConversations.ts  Post-1.0: localStorage conversation archive (upsert by id, cap 50)
+│       │   ├── useSavedScenarios.ts      Post-1.0: localStorage user-designed scenarios (upsert by id)
+│       │   ├── useAppSettings.ts   Post-1.0: localStorage AppSettings (text size, TTS, input translation)
+│       │   ├── useAudioRecorder.ts Phase 5: mic recording + STT lifecycle
+│       │   ├── useHealth.ts        Hardening: polls /api/health for the header status dot
 │       │   ├── useTokenLookup.ts   Cached per-token dictionary fetch (process-wide Map)
 │       │   └── useClickOutside.ts  Pointer-down + Escape handler for dropdowns
 │       └── components/
 │           ├── chat/
-│           │   ├── ModeSelector.tsx    Phase 4: full mode-selection flow (mode picker → scenario
-│           │   │                       list/detail or generated setup/preview → start)
-│           │   ├── MessageBubble.tsx   Bubbles; renders TokenizedText + translation + feedback
-│           │   ├── FeedbackAnnotation.tsx  Phase 3: collapsible per-message critique + grammar save
-│           │   ├── MessageList.tsx     Scrolls to bottom; forwards furigana/translation/feedback props
+│           │   ├── ModeSelector.tsx    Mode-selection flow (picker → scenario list/detail, generated
+│           │   │                       setup/preview, or post-1.0 custom-scenario designer + saved list)
+│           │   ├── MessageBubble.tsx   Bubbles; TokenizedText + translation + feedback + TTS playback
+│           │   │                       with word-highlight; post-1.0 rewind/regenerate controls
+│           │   ├── FeedbackAnnotation.tsx  Phase 3: collapsible critique + grammar save + correction translate
+│           │   ├── MessageList.tsx     Scrolls to bottom; forwards furigana/romaji/translation/feedback props
+│           │   ├── TranslationText.tsx Post-1.0: renders a translation line with loading/error/retry
 │           │   ├── EmptyState.tsx      "会話を始めましょう" prompt (shown during Free Talk before first message)
-│           │   └── MessageInput.tsx    Auto-grow textarea, IME-safe Enter, send/stop button
+│           │   └── MessageInput.tsx    Auto-grow textarea, IME-safe Enter, send/stop, mic; input-translation preview
 │           ├── reading/
-│           │   ├── TokenizedText.tsx   Renders tokens + furigana; orchestrates the hover popover
-│           │   ├── WordPopover.tsx     Portal dictionary card (words + kanji) with save button
-│           │   ├── ReadingControls.tsx Furigana/Translate toggles + Saved button (words + grammar count)
-│           │   └── SavedPanel.tsx      Slide-over with Words / Grammar tabs (replaces SavedVocabPanel)
+│           │   ├── TokenizedText.tsx   Renders tokens + furigana/romaji; hover popover; grammar/inflection chains
+│           │   ├── WordPopover.tsx     Portal card: words + kanji + grammar construction, with save button
+│           │   ├── ReadingControls.tsx Furigana/Romaji/Translate toggles
+│           │   ├── SavedPanel.tsx      Slide-over with Words / Grammar tabs
+│           │   ├── inflectionChains.ts Post-1.0: groups a content word + auxiliary tail into one hover unit
+│           │   └── alignTiming.ts      Post-1.0: maps VOICEVOX mora timings → per-token spans for TTS highlight
 │           ├── settings/
 │           │   ├── SettingDropdown.tsx  Generic dropdown, generic over value type T
-│           │   └── SettingsBar.tsx      Three dropdowns composed; onChange spreads new value
+│           │   ├── SettingsBar.tsx      Three conversation-setting dropdowns composed
+│           │   └── AppSettingsPanel.tsx Post-1.0: slide-over for AppSettings (text size, TTS, input translation)
+│           ├── history/
+│           │   └── ConversationHistory.tsx  Post-1.0: slide-over archive list (restore / delete)
 │           ├── layout/
-│           │   └── Header.tsx          Title + "New conversation" button (disabled if empty)
+│           │   └── Header.tsx          Title, status dot, New-conversation, Settings/History/Saved, auto-play toggle
 │           └── ui/
-│               ├── icons.tsx     Chevron/Send/Stop + Bookmark/Close/Chat/Check/ChevronRight (inline SVG)
+│               ├── icons.tsx     Inline SVG icon set (chat, reading aids, voice, history, settings…)
 │               ├── ToggleButton.tsx  Pill toggle used by the reading-aid switches
+│               ├── Tooltip.tsx   Post-1.0: lightweight hover/focus tooltip used across the controls
 │               └── ErrorBanner.tsx  role="alert" strip above the input
 │
 └── backend/scripts/
     ├── eval_models.py    A/B harness: given model+temp combos, runs a 3-turn JP conversation
     │                     and flags any non-Japanese character leakage. Standalone (sets sys.path,
     │                     reconfigures stdout to UTF-8). Run: uv run python scripts/eval_models.py
-    └── build_dictionaries.py  Downloads JMdict + KANJIDIC2 (jmdict-simplified release) and
-                          compiles backend/data/dictionary.sqlite. Idempotent; `npm run setup:dict`.
+    ├── build_dictionaries.py  Downloads JMdict + KANJIDIC2 (jmdict-simplified release) and
+    │                     compiles backend/data/dictionary.sqlite (with priority scores). Idempotent.
+    ├── eval_difficulty.py  Post-1.0 dev check: runs the real composed prompt once per Difficulty
+    │                     level and prints rough complexity signals so the four levels can be compared.
+    └── find_fused_particles.py  Post-1.0 dev tool: lists short kana-only JMdict grammatical words
+                          that Sudachi splits, as candidates for the tokenizer's _FUSED_PARTICLES allowlist.
 ```
+
+> **Tests** (`backend/tests/`): system-prompt composition, tokeniser round-trip +
+> furigana alignment, feedback/scenario JSON parsing, plus post-1.0 additions —
+> `test_grammar.py` (construction detection), `test_dictionary.py` +
+> `test_lookup_integration.py` (ranking/homophone suppression), `test_tts.py`
+> (mora-timing extraction). None need Ollama, VOICEVOX, or the dictionary file.
 
 ---
 
@@ -472,6 +515,54 @@ Portfolio/quality pass over the finished v1.0 — no new product features:
   settings bar and reading controls wrap into rows, bubbles reflow, no overflow.
 - `app/api/tts.py` reformatted by `ruff format` (now enforced in CI).
 
+---
+
+## Post-1.0 enhancements (on top of the finished v1.0)
+
+Refinements layered onto the completed app — no rearchitecting, all consistent
+with the brief's principles. (Some committed, some still in the working tree.)
+
+- **Grammar construction detection (reading aids).** `backend/app/japanese/grammar.py`
+  scans the token stream for ~30 curated multi-token constructions (〜ている,
+  〜てしまう/ちゃう, 〜なきゃ/なくちゃ, 〜ば〜ほど, 〜かもしれない, 〜ことができる…)
+  using a declarative `Pattern` library of per-token matchers with optional tails
+  and bounded gaps for split patterns. Deterministic, rule-based (no LLM, brief §6).
+  `/api/tokenize` now returns `grammar: GrammarMatch[]` alongside tokens; the hover
+  popover explains the whole construction next to the parts, whichever member token
+  is hovered. Frontend `inflectionChains.ts` does the lighter complementary job of
+  grouping a content word + its auxiliary tail (あり+まし+た) into one hover unit.
+- **Richer token metadata.** The tokenizer now emits `conjugationForm` and
+  `conjugationType` labels, and re-merges a curated `_FUSED_PARTICLES` allowlist so
+  Sudachi-split grammatical words (かも, よね, とか…) resolve to their proper JMdict
+  entry instead of a wall of single-kana homophones. `find_fused_particles.py`
+  generates review candidates for that allowlist.
+- **Better hover-dictionary ranking.** `dictionary.py` orders results by JMdict
+  priority and POS match, and suppresses kanji homophones only when a *common*
+  kana-written word shares the reading (so 鴇/とき doesn't bury 時). Covered by
+  `test_dictionary.py` and `test_lookup_integration.py`.
+- **Conversation history / archive.** Completed exchanges auto-save to localStorage
+  (`useSavedConversations`, upsert-by-id, capped at 50). A header History button opens
+  `ConversationHistory`, a slide-over to restore (full message state, settings, mode,
+  scenario) or delete past conversations. Restored messages are flagged `fromHistory`.
+- **Rewind & regenerate.** `useConversation` gains `rewindToMessage` (drop a user
+  message + everything after, returning its text to the input for editing) and
+  `regenerateReply` (re-stream an assistant turn from the preceding history).
+- **Custom scenarios.** Beyond curated + generated, users can design and save their
+  own scenarios with a settings preset (`SavedScenario`, `useSavedScenarios`); the
+  `ModeSelector` gained a designer and a saved-scenario list. Backend `Scenario` gained
+  optional `notes`/`goal` fields.
+- **App settings panel.** `AppSettingsPanel` + `useAppSettings` (localStorage) expose
+  text size (sm/md/lg/xl), TTS voice/speed/auto-play, and an input-translation preview.
+- **Romaji toggle.** A third reading-aid toggle alongside Furigana/Translate, rendering
+  romaji from the deterministic token readings.
+- **TTS word-highlight.** `/api/tts` now returns per-mora timings (extracted from the
+  VOICEVOX `audio_query`); `alignTiming.ts` maps them onto token spans so the spoken
+  word is highlighted in sync during playback. Playback speed and auto-play come from
+  AppSettings; `GET /api/tts/speakers` backs the voice picker.
+- **Input-translation preview & correction translation.** The composer can show a live
+  English preview of the message being typed; feedback corrections can be translated
+  on demand (`requestCorrectionTranslation`) — both reuse the existing `/api/translate`.
+
 ## What is NOT implemented (post-1.0)
 
 - **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
@@ -493,7 +584,7 @@ All backend settings read from `backend/.env` (or environment), prefixed `KAIWA_
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled dictionary (relative to backend root) |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
 | `KAIWA_VOICEVOX_BASE_URL` | `http://localhost:50021` | VOICEVOX local HTTP API (Phase 5) |
-| `KAIWA_VOICEVOX_SPEAKER` | `1` | VOICEVOX speaker ID (1 = 四国めたん ノーマル) |
+| `KAIWA_VOICEVOX_SPEAKER` | `2` | Default VOICEVOX speaker/style ID (overridable per-request from the app's TTS voice picker) |
 | `KAIWA_WHISPER_MODEL` | `base` | faster-whisper model size (tiny/base/small/medium/large-v3) |
 | `KAIWA_WHISPER_DEVICE` | `cuda` | faster-whisper device (`cuda` or `cpu`) |
 | `KAIWA_WHISPER_COMPUTE_TYPE` | `float16` | CTranslate2 compute type (`float16` for GPU, `int8` for CPU) |

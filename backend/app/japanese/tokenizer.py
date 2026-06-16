@@ -93,6 +93,33 @@ _CONJUGATION_TYPE_MAP: dict[str, str] = {
     "形容詞": "i-adjective",
 }
 
+# Multi-kana grammatical words that SudachiPy splits (even in split mode C) into
+# single-kana components — each of which then resolves to a wall of unrelated
+# homophones in hover-lookup — but that JMdict treats as one fused particle with
+# a meaning the parts don't convey alone (e.g. とか "things like X" is not "and"
+# (と) plus a question marker (か)). Re-merging restores the dedicated entry.
+#
+# This is a curated, *human-reviewed* allowlist, not the full set of fusible
+# forms: a pair is safe to merge only when its components essentially never
+# occur adjacently with an unrelated meaning. と (quotation) + は (topic) is
+# common (「猫とは…」), so とは is excluded; か + な almost always *is* sentence-
+# final かな, so it is included. Candidates are generated for review by
+# scripts/find_fused_particles.py. Each maps to the POS category the merged
+# token should carry so dictionary lookup filters and ranks it correctly.
+_FUSED_PARTICLES: dict[str, str] = {
+    "とか": "particle",
+    "でも": "particle",
+    "かな": "particle",
+    "かも": "particle",
+    "かね": "particle",
+    "よね": "particle",
+    "なんか": "particle",
+}
+
+# Upper bound on how many adjacent Sudachi morphemes any allowlisted form spans;
+# bounds the longest-match merge scan. Today's longest (なんか) is two morphemes.
+_MAX_FUSED_SPAN = 3
+
 
 def _is_kanji(ch: str) -> bool:
     code = ord(ch)
@@ -156,6 +183,43 @@ def _furigana_segments(surface: str, reading: str) -> list[FuriganaSegment]:
     if trail:
         segments.append(FuriganaSegment(text=trail))
     return segments
+
+
+def _merge_fused_particles(tokens: list[Token]) -> list[Token]:
+    """Merge runs of adjacent tokens whose surfaces concatenate to a
+    ``_FUSED_PARTICLES`` key into one token.
+
+    Greedy longest-match: at each position the widest span (up to
+    ``_MAX_FUSED_SPAN``) is tried first, so a longer fused form wins over a
+    shorter prefix of it. Concatenating surfaces still reproduces the input,
+    since the merged surface is just the original surfaces joined. The allowlist
+    holds only all-kana forms, so the merged token's reading equals its surface
+    and its furigana is a single plain segment.
+    """
+    merged: list[Token] = []
+    i = 0
+    n = len(tokens)
+    while i < n:
+        for span in range(min(_MAX_FUSED_SPAN, n - i), 1, -1):
+            surface = "".join(t.surface for t in tokens[i : i + span])
+            pos = _FUSED_PARTICLES.get(surface)
+            if pos is not None:
+                merged.append(
+                    Token(
+                        surface=surface,
+                        lemma=surface,
+                        reading=surface,
+                        pos=pos,
+                        interactive=True,
+                        furigana=[FuriganaSegment(text=surface)],
+                    )
+                )
+                i += span
+                break
+        else:
+            merged.append(tokens[i])
+            i += 1
+    return merged
 
 
 class Tokenizer:
@@ -225,4 +289,4 @@ class Tokenizer:
                     conjugation_type=conjugation_type,
                 )
             )
-        return tokens
+        return _merge_fused_particles(tokens)

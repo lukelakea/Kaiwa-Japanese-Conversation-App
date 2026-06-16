@@ -121,6 +121,7 @@ def test_common_constructions_detected(tokenizer: Tokenizer) -> None:
         "行ってはいけない": "te-wa-ikenai",
         "食べちゃだめ": "cha-dame",
         "雨が降るかもしれない": "kamoshirenai",
+        "いいですよね": "yo-assertion",
         "やってみる": "te-miru",
         "買っておく": "te-oku",
         "買っとく": "te-oku-contracted",
@@ -151,6 +152,21 @@ def test_matches_sorted_by_position_then_length(tokenizer: Tokenizer) -> None:
     first_two = [m for m in matches if m.token_indices[0] == starts[0]]
     spans = [m.token_indices[-1] - m.token_indices[0] for m in first_two]
     assert spans == sorted(spans, reverse=True)
+
+
+def test_conditional_tara_is_not_mislabelled_past(tokenizer: Tokenizer) -> None:
+    """SudachiPy lemmatises the conditional たら to the same auxiliary た as the
+    past tense, so the plain-past pattern must pin the surface (た/だ) to avoid
+    labelling 〜たら ('if/when') as a past tense.
+    """
+    for text in ("もしかしたら", "食べたら教えて"):
+        _, matches = _detect(tokenizer, text)
+        assert not any(m.pattern_id == "plain-past" for m in matches), (
+            f"{text}: 〜たら wrongly matched plain-past"
+        )
+    # Genuine past tense still detects.
+    _, matches = _detect(tokenizer, "日本に行った")
+    assert any(m.pattern_id == "plain-past" for m in matches)
 
 
 def test_plain_text_produces_no_matches(tokenizer: Tokenizer) -> None:

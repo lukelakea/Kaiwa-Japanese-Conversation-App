@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { useSavedGrammarContext } from '../../context/SavedGrammarContext';
 import type { Message } from '../../types/conversation';
@@ -11,6 +11,8 @@ interface FeedbackAnnotationProps {
   showTranslation: boolean;
   onRetry: () => void;
   onRetryCorrectionTranslation: () => void;
+  /** Optional element rendered to the right of the feedback trigger row (e.g. edit button). */
+  trailingAction?: ReactNode;
 }
 
 /**
@@ -24,27 +26,34 @@ export function FeedbackAnnotation({
   showTranslation,
   onRetry,
   onRetryCorrectionTranslation,
+  trailingAction,
 }: FeedbackAnnotationProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (message.feedbackStatus === 'loading') {
     return (
-      <p className="mt-1 flex items-center gap-1.5 px-1 text-xs text-zinc-500">
-        <ChatIcon className="h-3.5 w-3.5" />
-        Checking…
-      </p>
+      <div className="mt-1 flex items-center gap-2 px-1">
+        <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <ChatIcon className="h-3.5 w-3.5" />
+          Checking…
+        </p>
+        {trailingAction}
+      </div>
     );
   }
 
   if (message.feedbackStatus === 'error') {
     return (
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-1 px-1 text-xs text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-300"
-      >
-        Feedback unavailable — retry
-      </button>
+      <div className="mt-1 flex items-center gap-2 px-1">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="text-xs text-zinc-500 underline decoration-dotted underline-offset-2 hover:text-zinc-300"
+        >
+          Feedback unavailable — retry
+        </button>
+        {trailingAction}
+      </div>
     );
   }
 
@@ -55,29 +64,32 @@ export function FeedbackAnnotation({
 
   return (
     <div className="mt-1 w-full max-w-[80%]">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors ${
-          acceptable
-            ? 'text-emerald-400/80 hover:bg-emerald-400/10'
-            : 'text-amber-400/90 hover:bg-amber-400/10'
-        }`}
-      >
-        {acceptable ? <CheckIcon className="h-3.5 w-3.5" /> : <ChatIcon className="h-3.5 w-3.5" />}
-        <span>{acceptable ? 'Looks good' : 'Suggestion'}</span>
-        {!acceptable && feedback.labels.length > 0 && (
-          <span className="flex gap-1">
-            {feedback.labels.map((label) => (
-              <LabelChip key={label} label={label} />
-            ))}
-          </span>
-        )}
-        <ChevronRightIcon
-          className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
-        />
-      </button>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors ${
+            acceptable
+              ? 'text-emerald-400/80 hover:bg-emerald-400/10'
+              : 'text-amber-400/90 hover:bg-amber-400/10'
+          }`}
+        >
+          {acceptable ? <CheckIcon className="h-3.5 w-3.5" /> : <ChatIcon className="h-3.5 w-3.5" />}
+          <span>{acceptable ? 'Looks good' : 'Suggestion'}</span>
+          {!acceptable && feedback.labels.length > 0 && (
+            <span className="flex gap-1">
+              {feedback.labels.map((label) => (
+                <LabelChip key={label} label={label} />
+              ))}
+            </span>
+          )}
+          <ChevronRightIcon
+            className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+          />
+        </button>
+        {trailingAction}
+      </div>
 
       {expanded && (
         <FeedbackDetail

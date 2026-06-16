@@ -243,6 +243,28 @@ export function EditIcon({ className }: IconProps) {
   );
 }
 
+/** Circular arrow — regenerate / retry an assistant reply. */
+export function RetryIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>
+      <path
+        d="M2.5 8a5.5 5.5 0 1 0 5.5-5.5 5.5 5.5 0 0 0-3.9 1.6L2.5 5.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.5 2.5v3h3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SpeakerOffIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>

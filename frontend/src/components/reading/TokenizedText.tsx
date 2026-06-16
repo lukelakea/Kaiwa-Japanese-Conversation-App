@@ -5,7 +5,17 @@ import { toRomaji } from 'wanakana';
 import type { GrammarMatch, Token } from '../../types/reading';
 import type { TextSize } from '../../types/settings';
 import { TEXT_SIZE_CLASS } from '../../types/settings';
+import { findInflectionChains, indexInflectionChains } from './inflectionChains';
 import { WordPopover } from './WordPopover';
+
+/** Smallest rect containing all of `rects`. */
+function unionRect(rects: DOMRect[]): DOMRect {
+  const left = Math.min(...rects.map((r) => r.left));
+  const top = Math.min(...rects.map((r) => r.top));
+  const right = Math.max(...rects.map((r) => r.right));
+  const bottom = Math.max(...rects.map((r) => r.bottom));
+  return new DOMRect(left, top, right - left, bottom - top);
+}
 
 interface TokenizedTextProps {
   tokens: Token[];
@@ -39,8 +49,15 @@ export function TokenizedText({
   activeTokenIndex = null,
   onTokenClick,
 }: TokenizedTextProps) {
-  const [active, setActive] = useState<{ index: number; anchor: DOMRect } | null>(null);
+  const [active, setActive] = useState<{ index: number; anchor: DOMRect; chainKey: number } | null>(
+    null,
+  );
   const closeTimer = useRef<number | null>(null);
+  const tokenRefs = useRef<Map<number, HTMLElement>>(new Map());
+
+  // Inflection chains (e.g. あり+まし+た for ありました): a content word plus
+  // its trailing auxiliaries, shown as one popover instead of one per token.
+  const chainByToken = useMemo(() => indexInflectionChains(findInflectionChains(tokens)), [tokens]);
 
   // Per-token view of the detected constructions: index → matches it belongs
   // to, widest span first so the popover leads with the most informative card.
@@ -68,11 +85,16 @@ export function TokenizedText({
     () => (active ? (matchesByToken.get(active.index) ?? []) : []),
     [active, matchesByToken],
   );
-  // Every token participating in a construction with the hovered token.
-  const highlighted = useMemo(
-    () => new Set(activeMatches.flatMap((m) => m.tokenIndices)),
-    [activeMatches],
-  );
+  const activeChain = active ? chainByToken.get(active.index) : undefined;
+  // Every token participating in a construction or inflection chain with the
+  // hovered token.
+  const highlighted = useMemo(() => {
+    const set = new Set(activeMatches.flatMap((m) => m.tokenIndices));
+    if (activeChain) {
+      for (let i = activeChain.start; i <= activeChain.end; i++) set.add(i);
+    }
+    return set;
+  }, [activeMatches, activeChain]);
 
   const cancelClose = () => {
     if (closeTimer.current !== null) {
@@ -86,7 +108,17 @@ export function TokenizedText({
   };
   const open = (index: number, el: HTMLElement) => {
     cancelClose();
-    setActive({ index, anchor: el.getBoundingClientRect() });
+    const chain = chainByToken.get(index);
+    let anchor = el.getBoundingClientRect();
+    if (chain) {
+      const rects: DOMRect[] = [];
+      for (let i = chain.start; i <= chain.end; i++) {
+        const member = tokenRefs.current.get(i);
+        if (member) rects.push(member.getBoundingClientRect());
+      }
+      if (rects.length) anchor = unionRect(rects);
+    }
+    setActive({ index, anchor, chainKey: chain ? chain.start : index });
   };
 
   useEffect(() => cancelClose, []);
@@ -115,6 +147,10 @@ export function TokenizedText({
         token.interactive ? (
           <span
             key={index}
+            ref={(el) => {
+              if (el) tokenRefs.current.set(index, el);
+              else tokenRefs.current.delete(index);
+            }}
             role="button"
             tabIndex={0}
             onPointerEnter={(e) => open(index, e.currentTarget)}
@@ -153,11 +189,12 @@ export function TokenizedText({
       <AnimatePresence>
         {active && (
           <WordPopover
-            key={active.index}
-            token={tokens[active.index]}
+            key={active.chainKey}
+            token={activeChain ? tokens[activeChain.start] : tokens[active.index]}
             tokens={tokens}
             matches={activeMatches}
             activeIndex={active.index}
+            chain={activeChain}
             anchor={active.anchor}
             onPointerEnter={cancelClose}
             onPointerLeave={scheduleClose}

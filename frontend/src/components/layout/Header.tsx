@@ -1,5 +1,6 @@
 import { useHealth } from '../../hooks/useHealth';
-import { GearIcon, HistoryIcon } from '../ui/icons';
+import { BookmarkIcon, GearIcon, HistoryIcon, SpeakerIcon, SpeakerOffIcon } from '../ui/icons';
+import { Tooltip } from '../ui/Tooltip';
 
 interface HeaderProps {
   onReset: () => void;
@@ -7,6 +8,10 @@ interface HeaderProps {
   scenarioTitle?: string;
   onOpenSettings: () => void;
   onOpenHistory: () => void;
+  onOpenSaved: () => void;
+  savedCount?: number;
+  ttsAutoPlay?: boolean;
+  onToggleAutoPlay?: () => void;
 }
 
 const STATUS_DOT: Record<ReturnType<typeof useHealth>, { color: string; label: string }> = {
@@ -37,6 +42,10 @@ export function Header({
   scenarioTitle,
   onOpenSettings,
   onOpenHistory,
+  onOpenSaved,
+  savedCount,
+  ttsAutoPlay,
+  onToggleAutoPlay,
 }: HeaderProps) {
   return (
     <header className="flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3">
@@ -59,24 +68,61 @@ export function Header({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          aria-label="Conversation history"
-          title="History"
-          className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
-        >
-          <HistoryIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          aria-label="Open settings"
-          title="Settings"
-          className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
-        >
-          <GearIcon className="h-4 w-4" />
-        </button>
+        {onToggleAutoPlay && (
+          <Tooltip label={ttsAutoPlay ? 'Auto-play on' : 'Auto-play off'}>
+            <button
+              type="button"
+              onClick={onToggleAutoPlay}
+              aria-label={ttsAutoPlay ? 'Disable auto-play' : 'Enable auto-play'}
+              className={`rounded-lg border p-1.5 transition-colors ${
+                ttsAutoPlay
+                  ? 'border-accent-500/40 text-accent-400 hover:border-accent-500/60 hover:text-accent-300'
+                  : 'border-border text-zinc-500 hover:border-border-strong hover:text-zinc-100'
+              }`}
+            >
+              {ttsAutoPlay ? (
+                <SpeakerIcon className="h-4 w-4" />
+              ) : (
+                <SpeakerOffIcon className="h-4 w-4" />
+              )}
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip label="Saved words">
+          <button
+            type="button"
+            onClick={onOpenSaved}
+            aria-label="Saved words and grammar"
+            className="relative rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
+          >
+            <BookmarkIcon className="h-4 w-4" />
+            {!!savedCount && savedCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent-600 text-[10px] font-medium text-white">
+                {savedCount > 9 ? '9+' : savedCount}
+              </span>
+            )}
+          </button>
+        </Tooltip>
+        <Tooltip label="History">
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            aria-label="Conversation history"
+            className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
+          >
+            <HistoryIcon className="h-4 w-4" />
+          </button>
+        </Tooltip>
+        <Tooltip label="Settings">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Open settings"
+            className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
+          >
+            <GearIcon className="h-4 w-4" />
+          </button>
+        </Tooltip>
         <button
           type="button"
           onClick={onReset}

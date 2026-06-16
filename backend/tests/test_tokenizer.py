@@ -85,3 +85,45 @@ def test_tokenizer_marks_content_words_interactive() -> None:
     assert tokens["本"].interactive
     assert tokens["読む"].interactive
     assert tokens["は"].interactive
+
+
+def test_tokenizer_merges_fused_particles() -> None:
+    """とか and でも are split into single-kana particles by Sudachi, but
+    JMdict only defines the fused form ("things like X", "but/even") — so the
+    tokenizer re-merges them for hover lookup.
+    """
+    tokenizer = Tokenizer()
+
+    toka_tokens = tokenizer.tokenize("ピザとかパスタが好きです")
+    surfaces = [t.surface for t in toka_tokens]
+    assert "とか" in surfaces
+    assert "と" not in surfaces
+    assert "".join(surfaces) == "ピザとかパスタが好きです"
+
+    demo_tokens = tokenizer.tokenize("今でも好きです")
+    demo_surfaces = [t.surface for t in demo_tokens]
+    assert "でも" in demo_surfaces
+    assert "".join(demo_surfaces) == "今でも好きです"
+
+    kana_tokens = tokenizer.tokenize("難しいかな")
+    kana_surfaces = [t.surface for t in kana_tokens]
+    assert "かな" in kana_surfaces
+    assert "か" not in kana_surfaces
+    assert "".join(kana_surfaces) == "難しいかな"
+
+    # なんか spans a pronoun + particle (なん+か), exercising a non-particle
+    # constituent and confirming the merged token is tagged "particle".
+    nanka_tokens = tokenizer.tokenize("なんか食べたい")
+    nanka = next(t for t in nanka_tokens if t.surface == "なんか")
+    assert nanka.pos == "particle"
+    assert "".join(t.surface for t in nanka_tokens) == "なんか食べたい"
+
+
+def test_tokenizer_longest_match_prefers_wider_fused_form() -> None:
+    """A run that could merge as a shorter prefix instead takes the widest
+    allowlisted span (here よね wins; よ is not left stranded)."""
+    tokenizer = Tokenizer()
+    tokens = tokenizer.tokenize("いいですよね")
+    surfaces = [t.surface for t in tokens]
+    assert "よね" in surfaces
+    assert "".join(surfaces) == "いいですよね"

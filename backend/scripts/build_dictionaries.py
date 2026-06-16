@@ -172,7 +172,13 @@ def jmdict_word_rows(
         if not senses or not (kanji or kana):
             continue
 
+        # JMdict's "usually kana" (uk) flag marks words normally written in kana
+        # even though they have kanji forms (事 → こと, 物 → もの). Hover-lookup
+        # uses it to keep such a word for a pure-kana surface while dropping
+        # kanji homophones that merely share the reading. Stored only when set.
         entry = {"kanji": kanji, "kana": kana, "senses": senses}
+        if any("uk" in sense.get("misc", []) for sense in word.get("sense", [])):
+            entry["uk"] = True
         keys = list(dict.fromkeys(kanji + kana))  # de-duped, order-preserving
         priority = _priority_score(kanji_forms, kana_forms, kanji_freq)
         yield entry, keys, priority
@@ -287,6 +293,9 @@ def build_database(db_path: Path, jmdict: dict, kanjidic: dict, version: str) ->
                 ("source_version", version),
                 ("word_count", str(word_count)),
                 ("kanji_count", str(len(kanji_rows))),
+                # Signals the DB carries the per-entry uk flag, so lookup can use
+                # uk-based homophone suppression (older DBs fall back gracefully).
+                ("has_uk", "1"),
             ],
         )
         conn.commit()
