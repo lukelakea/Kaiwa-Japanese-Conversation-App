@@ -131,9 +131,7 @@ def test_common_token_resolves_to_expected_sense(
     )
 
 
-def test_no_closed_class_token_returns_empty(
-    tokenizer: Tokenizer, dictionary: Dictionary
-) -> None:
+def test_no_closed_class_token_returns_empty(tokenizer: Tokenizer, dictionary: Dictionary) -> None:
     """The catch-all: tokenise the corpus and assert every interactive
     closed-class token (particle, auxiliary, pronoun, …) resolves to at least
     one entry. A grammatical word is a closed set, all present in JMdict, so an
