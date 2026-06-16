@@ -173,29 +173,6 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                   </div>
                 </div>
 
-                {/* Auto-play toggle */}
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-zinc-300">Auto-play</p>
-                    <p className="text-xs text-zinc-600">Play each response automatically</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={settings.ttsAutoPlay}
-                    onClick={() => onChange({ ttsAutoPlay: !settings.ttsAutoPlay })}
-                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                      settings.ttsAutoPlay ? 'bg-accent-600' : 'bg-zinc-700'
-                    }`}
-                  >
-                    <span
-                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        settings.ttsAutoPlay ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
                 <label htmlFor="tts-voice-select" className="mb-2 block text-sm text-zinc-300">
                   VOICEVOX speaker
                 </label>

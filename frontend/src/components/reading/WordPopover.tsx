@@ -6,12 +6,15 @@ import { useSavedVocabContext } from '../../context/SavedVocabContext';
 import { useTokenLookup } from '../../hooks/useTokenLookup';
 import type { GrammarMatch, KanjiEntry, SavedWord, Token, WordEntry } from '../../types/reading';
 import { BookmarkIcon } from '../ui/icons';
+import type { InflectionChain } from './inflectionChains';
 
 const POPOVER_WIDTH = 320;
 // Approximate height used to decide whether to flip above the token.
 const FLIP_THRESHOLD = 260;
 
 interface WordPopoverProps {
+  /** The chain's head token (e.g. ある for ありました), or the hovered token
+   * itself when it isn't part of a chain. Dictionary lookup and save use this. */
   token: Token;
   /** The full token stream, used to render each construction's span. */
   tokens: Token[];
@@ -19,6 +22,9 @@ interface WordPopoverProps {
   matches: GrammarMatch[];
   /** Index of the hovered token, emphasised within each construction span. */
   activeIndex: number;
+  /** When the hovered token is part of an inflection chain (e.g. あり/まし/た),
+   * the chain's span and derived tags — the whole chain shares one popover. */
+  chain?: InflectionChain;
   /** Viewport rect of the hovered token, used to position the popover. */
   anchor: DOMRect;
   onPointerEnter: () => void;
@@ -36,6 +42,7 @@ export function WordPopover({
   tokens,
   matches,
   activeIndex,
+  chain,
   anchor,
   onPointerEnter,
   onPointerLeave,
@@ -69,9 +76,31 @@ export function WordPopover({
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="jp-text text-lg text-accent-400">{token.surface}</span>
-          {token.reading && token.reading !== token.surface && (
-            <span className="jp-text ml-2 text-zinc-400">{token.reading}</span>
+          {chain ? (
+            <span className="jp-text text-lg">
+              {tokens.slice(chain.start, chain.end + 1).map((chainToken, offset) => {
+                const tokenIndex = chain.start + offset;
+                return (
+                  <span
+                    key={tokenIndex}
+                    className={`rounded transition-colors duration-200 ${
+                      tokenIndex === activeIndex
+                        ? 'bg-accent-500/15 text-accent-400'
+                        : 'text-zinc-400'
+                    }`}
+                  >
+                    {chainToken.surface}
+                  </span>
+                );
+              })}
+            </span>
+          ) : (
+            <>
+              <span className="jp-text text-lg text-accent-400">{token.surface}</span>
+              {token.reading && token.reading !== token.surface && (
+                <span className="jp-text ml-2 text-zinc-400">{token.reading}</span>
+              )}
+            </>
           )}
           {token.conjugationForm && (
             <p className="mt-0.5 text-xs italic text-zinc-500">
@@ -95,6 +124,34 @@ export function WordPopover({
           {saved ? 'Saved' : 'Save'}
         </button>
       </div>
+
+      {chain && result?.words[0] && (
+        <div className="mb-3">
+          <p className="jp-text text-sm text-zinc-300">
+            {result.words[0].text}
+            {result.words[0].reading && result.words[0].reading !== result.words[0].text && (
+              <span className="ml-1.5 text-zinc-500">{result.words[0].reading}</span>
+            )}
+            {result.words[0].senses[0]?.glosses.length > 0 && (
+              <span className="ml-2 text-xs text-zinc-400">
+                — {result.words[0].senses[0].glosses.slice(0, 2).join('; ')}
+              </span>
+            )}
+          </p>
+          {chain.tags.length > 0 && (
+            <div className="mt-1 flex gap-1">
+              {chain.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border px-2 py-0.5 text-xs text-zinc-400"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {matches.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">

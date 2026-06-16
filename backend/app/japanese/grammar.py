@@ -348,11 +348,11 @@ PATTERNS: tuple[Pattern, ...] = (
         "kamoshirenai",
         "〜かもしれない",
         "might; maybe",
-        "Literally 'whether (it is so) cannot be known': か (question) + も (even) + "
-        "しれない (cannot be known). States a possibility; かもしれません is polite.",
+        "Literally 'whether (it is so) cannot be known': かも (か question + も even) "
+        "+ しれない (cannot be known). States a possibility; かもしれません is polite.",
         (
-            M(surface=("か",), pos=("particle",)),
-            M(surface=("も",), pos=("particle",)),
+            # かも is fused into one token by the tokenizer (see _FUSED_PARTICLES).
+            M(surface=("かも",), pos=("particle",)),
             M(lemma=("しれる",), pos=("verb",)),
             M(lemma=("ない", "ます")),
             M(lemma=("ぬ",), optional=True),
@@ -484,7 +484,10 @@ PATTERNS: tuple[Pattern, ...] = (
         "After ます it forms the polite past ました.",
         (
             M(pos=("verb", "adjective", "auxiliary"), form=("conjunctive",)),
-            M(lemma=("た",), pos=("auxiliary",)),
+            # Sudachi lemmatises the conditional たら/だら to the same た, so pin the
+            # surface to た/だ — otherwise 〜たら ('if/when', not past) would match
+            # and mislabel したら as a past tense.
+            M(lemma=("た",), pos=("auxiliary",), surface=("た", "だ")),
         ),
     ),
     Pattern(
@@ -508,8 +511,9 @@ PATTERNS: tuple[Pattern, ...] = (
         "casual equivalent. よね adds a request for agreement.",
         (
             M(pos=("verb", "adjective", "auxiliary")),
-            M(surface=("よ",), pos=("particle",)),
-            M(surface=("ね",), pos=("particle",), optional=True),
+            # よ+ね is fused into よね by the tokenizer (see _FUSED_PARTICLES), so
+            # the agreement-seeking variant arrives as one token, not よ then ね.
+            M(surface=("よ", "よね"), pos=("particle",)),
         ),
     ),
     Pattern(

@@ -66,6 +66,7 @@ export default function App() {
     send,
     startScenario,
     rewindToMessage,
+    regenerateReply,
     stop,
     reset,
     restore,
@@ -139,6 +140,14 @@ export default function App() {
     [rewindToMessage],
   );
 
+  const handleRegenerate = useCallback(
+    (id: string) => {
+      if (!activeMode) return;
+      void regenerateReply(id, settings, activeMode, activeScenario ?? undefined);
+    },
+    [regenerateReply, settings, activeMode, activeScenario],
+  );
+
   const handleRestoreConversation = useCallback(
     (conversation: SavedConversation) => {
       restore(conversation.messages);
@@ -163,6 +172,10 @@ export default function App() {
             scenarioTitle={activeScenario?.title_ja}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenHistory={() => setHistoryOpen(true)}
+            onOpenSaved={() => setSavedOpen(true)}
+            savedCount={savedVocab.words.length + savedGrammar.items.length}
+            ttsAutoPlay={appSettings.ttsAutoPlay}
+            onToggleAutoPlay={() => updateAppSettings({ ttsAutoPlay: !appSettings.ttsAutoPlay })}
           />
 
           {conversationActive && (
@@ -176,7 +189,6 @@ export default function App() {
                   onToggleRomaji={() => setShowRomaji((v) => !v)}
                   showTranslation={showTranslation}
                   onToggleTranslation={() => setShowTranslation((v) => !v)}
-                  onOpenSaved={() => setSavedOpen(true)}
                 />
               </div>
             </div>
@@ -198,6 +210,7 @@ export default function App() {
                 onRequestCorrectionTranslation={requestCorrectionTranslation}
                 onRetryFeedback={(id) => retryFeedback(id, settings)}
                 onRewind={handleRewind}
+                onRegenerate={handleRegenerate}
               />
             </main>
           ) : (

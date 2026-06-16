@@ -6,6 +6,7 @@ import { transitions } from '../../config/motion';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import type { ConversationStatus } from '../../hooks/useConversation';
 import { MicIcon, MicOffIcon, SendIcon, StopIcon } from '../ui/icons';
+import { Tooltip } from '../ui/Tooltip';
 
 interface MessageInputProps {
   status: ConversationStatus;
@@ -112,16 +113,26 @@ export function MessageInput({
   const handleMicClick = async () => {
     if (isRecording) {
       stop((transcript) => {
-        // Append to any existing text rather than replacing it, so the user
-        // can build up a message across multiple recordings or combine
-        // typed and spoken input.
-        setText((current) => {
-          if (!current.trim()) return transcript;
-          const needsSpace = !/\s$/.test(current);
-          return current + (needsSpace ? ' ' : '') + transcript;
+        // Insert at the cursor position rather than replacing the whole
+        // input, so the user can dictate into the middle of existing text
+        // or re-record a line without losing what's already there.
+        const el = textareaRef.current;
+        const start = el?.selectionStart ?? text.length;
+        const end = el?.selectionEnd ?? text.length;
+        const before = text.slice(0, start);
+        const after = text.slice(end);
+        const needsLeadingSpace = before.length > 0 && !/\s$/.test(before);
+        const needsTrailingSpace = after.length > 0 && !/^\s/.test(after);
+        const insertion =
+          (needsLeadingSpace ? ' ' : '') + transcript + (needsTrailingSpace ? ' ' : '');
+        setText(before + insertion + after);
+
+        const cursor = before.length + insertion.length;
+        // Focus and restore the cursor after the textarea re-renders with the new value.
+        requestAnimationFrame(() => {
+          el?.focus();
+          el?.setSelectionRange(cursor, cursor);
         });
-        // Focus the textarea so the user can review/edit before sending.
-        textareaRef.current?.focus();
       });
     } else if (!isProcessing && !isStreaming) {
       await start();
@@ -162,15 +173,15 @@ export function MessageInput({
       </AnimatePresence>
       <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-3">
         {/* Mic button — always shown; disabled while the AI is streaming */}
-        <motion.button
-          type="button"
-          onClick={() => void handleMicClick()}
-          disabled={isStreaming}
-          whileTap={{ scale: 0.92 }}
-          transition={transitions.spring}
-          aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
-          title={isRecording ? 'Stop recording' : 'Record voice input'}
-          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors
+        <Tooltip label={isRecording ? 'Stop recording' : isProcessing ? 'Transcribing…' : 'Voice input'}>
+          <motion.button
+            type="button"
+            onClick={() => void handleMicClick()}
+            disabled={isStreaming}
+            whileTap={{ scale: 0.92 }}
+            transition={transitions.spring}
+            aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
+            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors
             ${
               isRecording
                 ? 'bg-red-600/80 text-white hover:bg-red-500'
@@ -178,7 +189,7 @@ export function MessageInput({
                   ? 'cursor-wait bg-surface-2 text-zinc-500'
                   : 'bg-surface-2 text-zinc-400 hover:bg-white/10 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-600'
             }`}
-        >
+          >
           {isRecording && (
             <motion.span
               aria-hidden
@@ -187,12 +198,15 @@ export function MessageInput({
               transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
             />
           )}
-          {isRecording ? (
+          {isProcessing ? (
+            <span className="h-5 w-5 animate-spin rounded-full border border-zinc-600 border-t-zinc-300" />
+          ) : isRecording ? (
             <MicOffIcon className="h-5 w-5" />
           ) : (
-            <MicIcon className={`h-5 w-5 ${isProcessing ? 'opacity-40' : ''}`} />
+            <MicIcon className="h-5 w-5" />
           )}
-        </motion.button>
+          </motion.button>
+        </Tooltip>
 
         <textarea
           ref={textareaRef}
@@ -212,30 +226,34 @@ export function MessageInput({
         />
 
         {isStreaming ? (
-          <motion.button
-            type="button"
-            onClick={onStop}
-            whileTap={{ scale: 0.92 }}
-            transition={transitions.spring}
-            aria-label="Stop generating"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-zinc-300 transition-colors hover:bg-white/10"
-          >
-            <StopIcon className="h-4 w-4" />
-          </motion.button>
+          <Tooltip label="Stop generating">
+            <motion.button
+              type="button"
+              onClick={onStop}
+              whileTap={{ scale: 0.92 }}
+              transition={transitions.spring}
+              aria-label="Stop generating"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-zinc-300 transition-colors hover:bg-white/10"
+            >
+              <StopIcon className="h-4 w-4" />
+            </motion.button>
+          </Tooltip>
         ) : (
-          <motion.button
-            type="button"
-            onClick={submit}
-            disabled={!canSend}
-            whileTap={{ scale: 0.92 }}
-            transition={transitions.spring}
-            aria-label="Send message"
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-white transition-colors hover:bg-accent-500 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-zinc-600 ${
-              canSend ? 'shadow-accent-glow' : ''
-            }`}
-          >
-            <SendIcon className="h-5 w-5" />
-          </motion.button>
+          <Tooltip label="Send">
+            <motion.button
+              type="button"
+              onClick={submit}
+              disabled={!canSend}
+              whileTap={{ scale: 0.92 }}
+              transition={transitions.spring}
+              aria-label="Send message"
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-600 text-white transition-colors hover:bg-accent-500 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-zinc-600 ${
+                canSend ? 'shadow-accent-glow' : ''
+              }`}
+            >
+              <SendIcon className="h-5 w-5" />
+            </motion.button>
+          </Tooltip>
         )}
       </div>
     </div>

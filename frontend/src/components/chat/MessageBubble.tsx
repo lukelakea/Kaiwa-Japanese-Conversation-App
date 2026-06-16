@@ -5,7 +5,8 @@ import type { Message } from '../../types/conversation';
 import type { Token } from '../../types/reading';
 import type { TextSize, TtsSpeed } from '../../types/settings';
 import { TEXT_SIZE_CLASS } from '../../types/settings';
-import { EditIcon, SpeakerIcon, StopIcon } from '../ui/icons';
+import { EditIcon, RetryIcon, SpeakerIcon, StopIcon } from '../ui/icons';
+import { Tooltip } from '../ui/Tooltip';
 import { activeTokenAt, alignMorasToTokens, type TokenTiming } from '../reading/alignTiming';
 import { TokenizedText } from '../reading/TokenizedText';
 import { FeedbackAnnotation } from './FeedbackAnnotation';
@@ -20,12 +21,13 @@ interface MessageBubbleProps {
   ttsVoice: number | null;
   ttsSpeed: TtsSpeed;
   ttsAutoPlay: boolean;
-  /** True for the most recent user message, while idle — it alone can be edited/rewound. */
+  /** Whether user messages can currently be edited/rewound (not while streaming). */
   canRewind: boolean;
   onRequestTranslation: (id: string) => void;
   onRequestCorrectionTranslation: (id: string) => void;
   onRetryFeedback: (id: string) => void;
   onRewind: (id: string) => void;
+  onRegenerate: (id: string) => void;
 }
 
 function TypingDots() {
@@ -56,6 +58,7 @@ export function MessageBubble({
   onRequestCorrectionTranslation,
   onRetryFeedback,
   onRewind,
+  onRegenerate,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isPending = message.role === 'assistant' && message.content === '';
@@ -68,6 +71,18 @@ export function MessageBubble({
   // (or by a single-word click below) so TokenizedText can highlight it in sync
   // with the audio (Phase 5).
   const [activeTokenIndex, setActiveTokenIndex] = useState<number | null>(null);
+
+  // Show a "warming up" hint if the model takes longer than a few seconds to
+  // produce its first token — common on cold start with large Ollama models.
+  const [showWarmup, setShowWarmup] = useState(false);
+  useEffect(() => {
+    if (!isPending) {
+      setShowWarmup(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowWarmup(true), 4000);
+    return () => clearTimeout(timer);
+  }, [isPending]);
 
   const ttsButtonRef = useRef<TtsButtonHandle>(null);
   const wordAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -160,6 +175,9 @@ export function MessageBubble({
     onRequestCorrectionTranslation,
   ]);
 
+  const iconButtonClass =
+    'text-zinc-600 transition-colors hover:text-zinc-300 shrink-0';
+
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
       <div
@@ -170,7 +188,12 @@ export function MessageBubble({
         }`}
       >
         {isPending ? (
-          <TypingDots />
+          <>
+            <TypingDots />
+            {showWarmup && (
+              <p className="mt-0.5 text-xs text-zinc-600">Warming up…</p>
+            )}
+          </>
         ) : message.tokens ? (
           <TokenizedText
             tokens={message.tokens}
@@ -194,6 +217,7 @@ export function MessageBubble({
         )}
       </div>
 
+      {/* AI sub-row: speaker + regenerate + translation */}
       {!isUser && !isPending && (
         <div className="mt-1 flex items-center gap-3 px-1">
           <TtsButton
@@ -206,6 +230,18 @@ export function MessageBubble({
             isStreaming={message.tokens === undefined && message.content !== ''}
             onActiveTokenChange={setActiveTokenIndex}
           />
+          {canRewind && (
+            <Tooltip label="Regenerate reply">
+              <button
+                type="button"
+                onClick={() => onRegenerate(message.id)}
+                aria-label="Regenerate this reply"
+                className={iconButtonClass}
+              >
+                <RetryIcon className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          )}
           {showTranslation && (
             <TranslationText
               text={message.translation}
@@ -226,26 +262,43 @@ export function MessageBubble({
         </div>
       )}
 
+      {/* Feedback annotation with pencil inline in the trigger row */}
       {isUser && (message.feedback || message.feedbackStatus) && (
         <FeedbackAnnotation
           message={message}
           showTranslation={showTranslation}
           onRetry={() => onRetryFeedback(message.id)}
           onRetryCorrectionTranslation={() => onRequestCorrectionTranslation(message.id)}
+          trailingAction={
+            canRewind && (
+              <Tooltip label="Edit and resend">
+                <button
+                  type="button"
+                  onClick={() => onRewind(message.id)}
+                  aria-label="Edit this message"
+                  className={iconButtonClass}
+                >
+                  <EditIcon className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
+            )
+          }
         />
       )}
 
-      {isUser && canRewind && (
+      {/* Standalone pencil row when there's no feedback */}
+      {isUser && canRewind && !message.feedback && !message.feedbackStatus && (
         <div className="mt-1 flex items-center px-1">
-          <button
-            type="button"
-            onClick={() => onRewind(message.id)}
-            aria-label="Edit this message"
-            title="Edit and resend"
-            className="flex items-center gap-1 text-zinc-600 transition-colors hover:text-zinc-300"
-          >
-            <EditIcon className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip label="Edit and resend">
+            <button
+              type="button"
+              onClick={() => onRewind(message.id)}
+              aria-label="Edit this message"
+              className={iconButtonClass}
+            >
+              <EditIcon className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
         </div>
       )}
     </div>
@@ -365,21 +418,22 @@ const TtsButton = forwardRef<
   if (!text.trim()) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() => void handleClick()}
-      aria-label={ttsStatus === 'playing' ? 'Stop playback' : 'Play message aloud'}
-      title={ttsStatus === 'playing' ? 'Stop' : 'Read aloud'}
-      className="flex items-center gap-1 text-zinc-600 transition-colors hover:text-zinc-300"
-    >
-      {ttsStatus === 'loading' ? (
-        <span className="h-3.5 w-3.5 animate-spin rounded-full border border-zinc-600 border-t-zinc-300" />
-      ) : ttsStatus === 'playing' ? (
-        <StopIcon className="h-3.5 w-3.5 text-accent-400" />
-      ) : (
-        <SpeakerIcon className="h-3.5 w-3.5" />
-      )}
-    </button>
+    <Tooltip label={ttsStatus === 'playing' ? 'Stop' : 'Read aloud'}>
+      <button
+        type="button"
+        onClick={() => void handleClick()}
+        aria-label={ttsStatus === 'playing' ? 'Stop playback' : 'Play message aloud'}
+        className="flex items-center gap-1 text-zinc-600 transition-colors hover:text-zinc-300"
+      >
+        {ttsStatus === 'loading' ? (
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border border-zinc-600 border-t-zinc-300" />
+        ) : ttsStatus === 'playing' ? (
+          <StopIcon className="h-3.5 w-3.5 text-accent-400" />
+        ) : (
+          <SpeakerIcon className="h-3.5 w-3.5" />
+        )}
+      </button>
+    </Tooltip>
   );
 });
 

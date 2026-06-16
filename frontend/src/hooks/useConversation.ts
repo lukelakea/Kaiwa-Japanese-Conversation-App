@@ -174,11 +174,68 @@ export function useConversation() {
     [messages, status, appendDelta, dropIfEmpty, tokenizeMessage, generateFeedback],
   );
 
-  // Rewind to a user message: drop it and everything after it (normally just
-  // the assistant's reply), returning its text so the caller can restore it
-  // to the input for editing. Only valid for the most recent user message —
-  // the caller is expected to enforce that, since rewinding further back
-  // would silently discard more of the conversation.
+  // Re-generate an assistant reply: drop it (and anything after) and re-stream
+  // the same turn, using the history that preceded it.
+  const regenerateReply = useCallback(
+    async (
+      assistantMsgId: string,
+      settings: ConversationSettings,
+      mode: ConversationMode,
+      scenario?: Scenario,
+    ) => {
+      if (status === 'streaming') return;
+      const msgs = messagesRef.current;
+      const index = msgs.findIndex((m) => m.id === assistantMsgId);
+      if (index < 0 || msgs[index].role !== 'assistant') return;
+
+      const slicedMessages = msgs.slice(0, index);
+      const history = toWire(slicedMessages);
+      const newAssistantId = nextId();
+
+      setError(null);
+      setStatus('streaming');
+      setMessages([...slicedMessages, { id: newAssistantId, role: 'assistant', content: '' }]);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let full = '';
+
+      try {
+        await streamChat(
+          { messages: history, settings, mode, scenario },
+          {
+            signal: controller.signal,
+            onDelta: (delta) => {
+              full += delta;
+              appendDelta(newAssistantId, delta);
+            },
+          },
+        );
+        setStatus('idle');
+        void tokenizeMessage(newAssistantId, full);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          dropIfEmpty(newAssistantId);
+          setStatus('idle');
+          void tokenizeMessage(newAssistantId, full);
+          return;
+        }
+        dropIfEmpty(newAssistantId);
+        setError(
+          err instanceof ApiError ? err.message : 'Something went wrong generating the reply.',
+        );
+        setStatus('error');
+      } finally {
+        abortRef.current = null;
+      }
+    },
+    [status, appendDelta, dropIfEmpty, tokenizeMessage],
+  );
+
+  // Rewind to a user message: drop it and everything after it, returning its
+  // text so the caller can restore it to the input for editing. Rewinding to
+  // an earlier message discards more of the conversation than rewinding to
+  // the latest one.
   const rewindToMessage = useCallback(
     (id: string): string | null => {
       if (status === 'streaming') return null;
@@ -308,6 +365,7 @@ export function useConversation() {
     send,
     startScenario,
     rewindToMessage,
+    regenerateReply,
     stop,
     reset,
     restore,
