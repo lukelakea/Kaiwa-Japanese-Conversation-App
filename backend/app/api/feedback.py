@@ -58,7 +58,7 @@ async def feedback(
         logger.warning("Feedback response was not parseable JSON: %r", raw[:300])
         return JSONResponse(
             status_code=502,
-            content={"detail": "Could not analyse this message. Try again."},
+            content={"detail": "Could not analyze this message. Try again."},
         )
 
     return parsed

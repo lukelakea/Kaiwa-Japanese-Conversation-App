@@ -60,7 +60,7 @@ class JsonDocumentStore:
     def write(self, collection: str, document: Any) -> None:
         """Overwrite a collection's document atomically.
 
-        Serialise to a unique temp file in the same directory, then ``os.replace``
+        Serialize to a unique temp file in the same directory, then ``os.replace``
         it into place — atomic on the same filesystem on both POSIX and Windows.
         A crash, a concurrent read, or two concurrent writes can therefore never
         observe (or leave behind) a half-written document.

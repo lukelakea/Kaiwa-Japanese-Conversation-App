@@ -4,7 +4,7 @@
  * every animated surface (messages, drawers, popovers, cards) feels related.
  *
  * Durations/easing match the CSS tokens in index.css (--duration-*,
- * --ease-out-soft). `motion` automatically honours prefers-reduced-motion, so
+ * --ease-out-soft). `motion` automatically honors prefers-reduced-motion, so
  * these need no manual guards.
  */
 import type { Transition, Variants } from 'motion/react';

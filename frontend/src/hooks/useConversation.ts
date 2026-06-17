@@ -93,7 +93,7 @@ export function useConversation() {
 
   // Retry feedback for a user message after a failure. Reconstructs the context
   // (the reply it answered) from current history; uses the live settings since
-  // the practised register is what we judge against.
+  // the practiced register is what we judge against.
   const retryFeedback = useCallback(
     (id: string, settings: ConversationSettings) => {
       const msgs = messagesRef.current;

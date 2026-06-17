@@ -2,7 +2,7 @@
 
 The three settings (brief §4) and the mode (§5) are translated here into plain
 instruction fragments and assembled into a single system prompt. This is the
-*only* place that behaviour-shaping lives — there are no separate models or
+*only* place that behavior-shaping lives — there are no separate models or
 pipelines per setting (brief §4 closing note). Changing a setting mid-session
 simply produces a different prompt on the next turn.
 """

@@ -29,7 +29,7 @@ describe('findInflectionChains', () => {
     expect(chains).toEqual([{ start: 0, end: 2, tags: ['polite', 'past'] }]);
   });
 
-  it('does not group a content word with no recognised auxiliary tail', () => {
+  it('does not group a content word with no recognized auxiliary tail', () => {
     const tokens = [token('猫', '猫', 'noun'), token('が', 'が', 'particle')];
 
     expect(findInflectionChains(tokens)).toEqual([]);

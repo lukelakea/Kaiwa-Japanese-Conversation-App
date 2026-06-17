@@ -37,7 +37,7 @@ describe('useConversation.send', () => {
     });
     mocked.streamChat.mockImplementation(async (_req, { onDelta }) => {
       // The feedback call must already be in flight before the reply streams —
-      // proving the two are dispatched together, not serialised.
+      // proving the two are dispatched together, not serialized.
       expect(callOrder).toContain('feedback');
       onDelta('はい');
     });

@@ -202,7 +202,7 @@ PATTERNS: tuple[Pattern, ...] = (
         "〜てください",
         "please do",
         "The て-form plus ください (imperative of くださる, 'to give me') literally asks "
-        "'give me (the favour of) doing' — the standard polite request.",
+        "'give me (the favor of) doing' — the standard polite request.",
         (_V_CONJ, _TE, M(lemma=("くださる",), pos=("verb",))),
     ),
     Pattern(
@@ -386,14 +386,14 @@ PATTERNS: tuple[Pattern, ...] = (
         "te-kureru",
         "〜てくれる",
         "(someone) does for me",
-        "くれる ('to give me') after the て-form marks the action as a favour flowing "
-        "toward the speaker: 手伝ってくれる = '(they) help me (as a favour)'.",
+        "くれる ('to give me') after the て-form marks the action as a favor flowing "
+        "toward the speaker: 手伝ってくれる = '(they) help me (as a favor)'.",
         (_V_CONJ, _TE, M(lemma=("くれる",), pos=("verb",))),
     ),
     Pattern(
         "te-morau",
         "〜てもらう",
-        "have (someone) do; receive the favour of",
+        "have (someone) do; receive the favor of",
         "もらう ('to receive') after the て-form frames the action as something the "
         "subject receives from someone: 教えてもらう = 'have (someone) teach me'.",
         (_V_CONJ, _TE, M(lemma=("もらう",), pos=("verb",))),
@@ -402,7 +402,7 @@ PATTERNS: tuple[Pattern, ...] = (
         "te-ageru",
         "〜てあげる",
         "do for (someone)",
-        "あげる ('to give') after the て-form marks the action as a favour flowing away "
+        "あげる ('to give') after the て-form marks the action as a favor flowing away "
         "from the speaker: 買ってあげる = 'buy (it) for them'.",
         (_V_CONJ, _TE, M(lemma=("あげる",), pos=("verb",))),
     ),

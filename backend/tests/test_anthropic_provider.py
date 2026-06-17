@@ -58,7 +58,7 @@ def test_split_system_injects_nudge_when_no_turns():
     assert turns[0]["content"]
 
 
-# --- streaming behaviour (fake SDK client) ----------------------------------
+# --- streaming behavior (fake SDK client) ----------------------------------
 
 
 async def _agen(items):

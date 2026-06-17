@@ -167,7 +167,7 @@ export function ModeSelector({
         <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-8 px-6">
           <div className="text-center">
             <p className="jp-text display-heading text-3xl text-zinc-200">会話を始めましょう</p>
-            <p className="mt-2 text-sm text-zinc-500">Choose how you want to practise today.</p>
+            <p className="mt-2 text-sm text-zinc-500">Choose how you want to practice today.</p>
           </div>
 
           <motion.div
@@ -185,7 +185,7 @@ export function ModeSelector({
             <ModeCard
               label="Scenarios"
               labelJa="シナリオ"
-              description="Pick a real-life situation and practise in context."
+              description="Pick a real-life situation and practice in context."
               onClick={() => setStep({ name: 'scenario-list' })}
             />
             <ModeCard

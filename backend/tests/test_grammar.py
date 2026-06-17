@@ -1,7 +1,7 @@
 """Tests for grammatical construction detection (brief §6).
 
 Golden sentences pin the patterns that motivated the feature (してない,
-食べていた, 行かなければ…, ですよ) plus the engine behaviours that are easy to
+食べていた, 行かなければ…, ですよ) plus the engine behaviors that are easy to
 regress: contractions, gapped patterns, entry-point invariance, and sentence
 boundaries. Uses the real SudachiPy tokenizer so the patterns stay grounded in
 actual segmentation.

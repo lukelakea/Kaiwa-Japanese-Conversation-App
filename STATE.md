@@ -3,10 +3,9 @@
 **Last updated:** post-1.0 enhancement pass (conversation history, grammar
 construction detection, TTS word-highlight, app settings panel, romaji,
 rewind/regenerate, custom scenarios).  
-**Current phase:** All phases of v1.0 (0–5) complete and hardened. Work since is
-a series of post-1.0 refinements layered onto the finished app — see the
-**Post-1.0 enhancements** section below. Some of this work is committed; some is
-still in the working tree (see `git status`).  
+**Current phase:** All phases of v1.0 (0–5) complete and hardened. All
+post-1.0 refinements described below are committed — see the
+**Post-1.0 enhancements** section for the full list.  
 Read `PROJECT_BRIEF.md` for the full product vision and phase plan (it is the
 frozen as-conceived brief; deviations and everything built since live here).
 
@@ -233,7 +232,7 @@ npm run build          # TS type-check + Vite production build
   - Difficulty (beginner/intermediate/advanced/near_fluent)
   - Formality (casual/friendly/polite/formal)
   - Initiative (ai_led/balanced/user_led)
-- All three are adjustable mid-conversation in the UI. Each turn's settings are sent in the request; the next reply reflects the new settings. (A setting change partway through a long conversation shifts tone gradually rather than abruptly, which is realistic model behaviour — not a bug.)
+- All three are adjustable mid-conversation in the UI. Each turn's settings are sent in the request; the next reply reflects the new settings. (A setting change partway through a long conversation shifts tone gradually rather than abruptly, which is realistic model behavior — not a bug.)
 - Free Talk mode implemented. Scenario/Generated modes are enum values in the model but not yet wired (Phase 4).
 - Error handling: startup errors (Ollama down, model not pulled) become HTTP 502 with a readable message shown in the `ErrorBanner`. Mid-stream errors end the stream cleanly.
 - Stop-generation: abort controller cancels the in-flight fetch; a partial reply is kept if content exists, dropped if still empty.
@@ -275,7 +274,7 @@ All deliverables built and verified end-to-end in the browser against a live
   most recent message. It runs as a **separate LLM call fired in parallel with
   the chat reply** (verified: both POSTs leave together) — the critique depends
   only on the user's text and the turn it replies to, never on the assistant's
-  answer, so there is nothing to serialise. The user's message receives an
+  answer, so there is nothing to serialize. The user's message receives an
   **inline, collapsible annotation**, collapsed by default so the conversation
   reads naturally.
 - **Acceptable vs. correction.** When the message is already natural the
@@ -284,7 +283,7 @@ All deliverables built and verified end-to-end in the browser against a live
   more than one). Expanding shows the **English explanation** and the **corrected
   Japanese** (brief §8).
 - **Register-aware.** The request carries the current settings; the prompt judges
-  against the register the learner is *practising*, so casual input is not
+  against the register the learner is *practicing*, so casual input is not
   "corrected" up to です・ます (verified).
 - **Structured output.** `GenerationOptions.json_mode` maps to Ollama's
   `format: "json"`; the endpoint validates defensively (brace extraction, label
@@ -317,7 +316,7 @@ this file leaned toward running kuromoji *client-side* (since it is a JS library
 
 **Decision (confirmed with the developer):** tokenise on the **backend with
 SudachiPy** (Python). The earlier note overlooked that Python has first-class
-morphological analysers — so there is no need for a JS tokenizer or a Node
+morphological analyzers — so there is no need for a JS tokenizer or a Node
 sidecar at all. SudachiPy keeps everything in Python, gives more accurate
 dictionary-form lemmas (which drive JMdict lookups) and readings, and ships no
 tokenizer dictionary to the browser. The frontend calls `/api/tokenize` once a
@@ -361,7 +360,7 @@ call or sequentially, and explain the tradeoff."
 stream at the same time (verified in the browser network panel — both POSTs
 leave together). The critique's inputs are fully known the instant the user hits
 send (their message + the turn it replies to); it has **no dependency** on the
-assistant's answer, so serialising would only add the reply's latency to the
+assistant's answer, so serializing would only add the reply's latency to the
 feedback with zero benefit. The two results land independently: the reply streams
 into its bubble, the annotation resolves under the user's message. The only cost
 is two concurrent model calls on the same Ollama instance; on the target RTX 5090
@@ -397,7 +396,7 @@ to its own structured-output mode with no feature-code change.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **Mid-conversation register shift is gradual** | By design | The model honours the history's established register. On a fresh conversation the register difference is stark. Not a code issue. |
+| **Mid-conversation register shift is gradual** | By design | The model honors the history's established register. On a fresh conversation the register difference is stark. Not a code issue. |
 | **No "don't repeat topics" enforcement** | Partially addressed | The system prompt instructs the model to track topics, but this relies on model compliance — no structural enforcement. Acceptable for v1.0 per the brief. |
 | **Context window limit** | Deferred (per brief §9) | Full history sent every turn. Very long sessions will eventually hit the model's context limit. Documented in README; summarisation is post-1.0. |
 | **`checkHealth()` in `client.ts` is exported but unused** | Minor | Available for a future connection-status indicator in the UI. Not dead in the sense that it's part of the API client surface. |
@@ -439,7 +438,7 @@ All deliverables built and verified in the browser:
   greets and sets the scene naturally in character. Subsequent turns call `/api/chat` with
   `mode` and `scenario` forwarded in every request so the framing persists throughout.
 - **Scenario badge in header.** When a scenario is active, the scenario's Japanese title
-  appears as a small accent-coloured pill in the header, giving context without clutter.
+  appears as a small accent-colored pill in the header, giving context without clutter.
 - **Settings bar hidden on mode picker.** The settings/reading controls only appear once a
   conversation is active. The mode picker uses full-screen layout, uncluttered.
 
