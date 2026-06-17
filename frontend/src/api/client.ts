@@ -227,13 +227,24 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-export async function checkHealth(): Promise<boolean> {
+export interface HealthInfo {
+  provider: string;
+  model: string;
+}
+
+export async function fetchHealth(): Promise<HealthInfo | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/health`);
-    return response.ok;
+    if (!response.ok) return null;
+    const data = (await response.json()) as { status: string; provider: string; model: string };
+    return { provider: data.provider, model: data.model };
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function checkHealth(): Promise<boolean> {
+  return (await fetchHealth()) !== null;
 }
 
 async function extractErrorDetail(response: Response): Promise<string> {

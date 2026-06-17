@@ -21,6 +21,11 @@ dependencies = [
     "faster-whisper>=1.1",
 ]
 
+[project.optional-dependencies]
+# Cloud LLM provider (opt-in). Local-first stays the default: install with
+# `uv sync --extra anthropic` only when running KAIWA_LLM_PROVIDER=anthropic.
+anthropic = ["anthropic>=0.40"]
+
 [dependency-groups]
 dev = ["ruff>=0.9", "pytest>=8.3"]
 

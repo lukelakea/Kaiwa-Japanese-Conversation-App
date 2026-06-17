@@ -1,34 +1,40 @@
-import { useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { DEFAULT_APP_SETTINGS } from '../types/settings';
 import type { AppSettings } from '../types/settings';
+import { usePersistedState } from './usePersistedState';
 
-const STORAGE_KEY = 'kaiwa:app-settings';
+/** Old localStorage key, read once to migrate existing data to the backend. */
+const LEGACY_KEY = 'kaiwa:app-settings';
 
-function loadSettings(): AppSettings {
+function loadLegacy(): Partial<AppSettings> | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_APP_SETTINGS;
-    return { ...DEFAULT_APP_SETTINGS, ...(JSON.parse(raw) as Partial<AppSettings>) };
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<AppSettings>;
   } catch {
-    return DEFAULT_APP_SETTINGS;
+    return null;
   }
 }
 
 export function useAppSettings() {
-  const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  // Stored as a (possibly partial) patch over the defaults, persisted to the
+  // backend document store. Defaults are merged on read so a settings object
+  // saved before a new field existed still picks up that field's default.
+  const [stored, setStored] = usePersistedState<Partial<AppSettings>>(
+    'app-settings',
+    loadLegacy,
+    {},
+  );
 
-  const update = (patch: Partial<AppSettings>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // localStorage unavailable (e.g. private browsing with storage blocked).
-      }
-      return next;
-    });
-  };
+  const settings = useMemo<AppSettings>(() => ({ ...DEFAULT_APP_SETTINGS, ...stored }), [stored]);
+
+  const update = useCallback(
+    (patch: Partial<AppSettings>) => {
+      setStored((prev) => ({ ...prev, ...patch }));
+    },
+    [setStored],
+  );
 
   return { settings, update };
 }

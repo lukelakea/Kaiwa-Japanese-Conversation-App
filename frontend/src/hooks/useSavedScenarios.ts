@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
 import type { SavedScenario } from '../types/scenario';
+import { usePersistedState } from './usePersistedState';
 
-const STORAGE_KEY = 'kaiwa.customScenarios.v1';
+/** Old localStorage key, read once to migrate existing data to the backend. */
+const LEGACY_KEY = 'kaiwa.customScenarios.v1';
 
-function load(): SavedScenario[] {
+function loadLegacy(): SavedScenario[] | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as SavedScenario[]) : [];
+    return Array.isArray(parsed) ? (parsed as SavedScenario[]) : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -22,26 +24,28 @@ export interface SavedScenarios {
 }
 
 /**
- * User-designed scenarios backed by localStorage. Upserts by id so editing a
- * saved scenario overwrites it in place rather than creating a duplicate.
+ * User-designed scenarios persisted to the backend document store. Upserts by id
+ * so editing a saved scenario overwrites it in place rather than duplicating.
  */
 export function useSavedScenarios(): SavedScenarios {
-  const [scenarios, setScenarios] = useState<SavedScenario[]>(load);
+  const [scenarios, setScenarios] = usePersistedState<SavedScenario[]>('scenarios', loadLegacy, []);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
-  }, [scenarios]);
+  const save = useCallback(
+    (scenario: SavedScenario) => {
+      setScenarios((prev) => {
+        const without = prev.filter((s) => s.id !== scenario.id);
+        return [scenario, ...without];
+      });
+    },
+    [setScenarios],
+  );
 
-  const save = useCallback((scenario: SavedScenario) => {
-    setScenarios((prev) => {
-      const without = prev.filter((s) => s.id !== scenario.id);
-      return [scenario, ...without];
-    });
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setScenarios((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  const remove = useCallback(
+    (id: string) => {
+      setScenarios((prev) => prev.filter((s) => s.id !== id));
+    },
+    [setScenarios],
+  );
 
   return { scenarios, save, remove };
 }

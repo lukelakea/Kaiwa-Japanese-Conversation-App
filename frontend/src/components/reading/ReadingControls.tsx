@@ -23,18 +23,21 @@ export function ReadingControls({
       <ToggleButton
         label="Furigana"
         sublabel="ふりがな"
+        tooltip="Show reading aids above kanji"
         active={showFurigana}
         onToggle={onToggleFurigana}
       />
       <ToggleButton
         label="Romaji"
         sublabel="ローマ字"
+        tooltip="Show Latin-script pronunciation"
         active={showRomaji}
         onToggle={onToggleRomaji}
       />
       <ToggleButton
         label="Translate"
         sublabel="翻訳"
+        tooltip="Show English translations"
         active={showTranslation}
         onToggle={onToggleTranslation}
       />

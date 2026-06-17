@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
-import { fetchSpeakers } from '../../api/client';
-import type { SpeakerOption } from '../../api/client';
+import { fetchHealth, fetchSpeakers } from '../../api/client';
+import type { HealthInfo, SpeakerOption } from '../../api/client';
 import { backdropVariants, drawerVariants } from '../../config/motion';
 import type { AppSettings, TextSize, TtsSpeed } from '../../types/settings';
 import { TEXT_SIZE_CLASS } from '../../types/settings';
@@ -31,6 +31,7 @@ const TTS_SPEED_OPTIONS: { value: TtsSpeed; label: string }[] = [
 export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSettingsPanelProps) {
   const [speakers, setSpeakers] = useState<SpeakerOption[]>([]);
   const [speakersStatus, setSpeakersStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [serverInfo, setServerInfo] = useState<HealthInfo | null>(null);
 
   // Fetch speakers once when the panel opens.
   useEffect(() => {
@@ -42,6 +43,12 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
       setSpeakersStatus(list.length === 0 ? 'error' : 'idle');
     });
     return () => controller.abort();
+  }, [open]);
+
+  // Fetch server info once when the panel opens.
+  useEffect(() => {
+    if (!open) return;
+    fetchHealth().then(setServerInfo);
   }, [open]);
 
   // Close on Escape.
@@ -203,6 +210,36 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                       </option>
                     ))}
                   </select>
+                )}
+              </section>
+
+              {/* Server section */}
+              <section>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Model
+                </p>
+                {serverInfo ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-500">Provider</span>
+                      <span className="font-medium text-zinc-300">{serverInfo.provider}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="shrink-0 text-zinc-500">Model</span>
+                      <span className="ml-4 truncate text-right font-medium text-zinc-300">
+                        {serverInfo.model}
+                      </span>
+                    </div>
+                    <p className="pt-1 text-xs text-zinc-600">
+                      Set{' '}
+                      <code className="rounded bg-surface-2 px-1 py-0.5 text-zinc-500">
+                        KAIWA_LLM_PROVIDER
+                      </code>{' '}
+                      in <code className="rounded bg-surface-2 px-1 py-0.5 text-zinc-500">backend/.env</code> to change.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-600">Server offline</p>
                 )}
               </section>
             </div>

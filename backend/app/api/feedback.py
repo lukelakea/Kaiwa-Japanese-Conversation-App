@@ -42,7 +42,7 @@ async def feedback(
         LLMMessage(role="user", content=format_feedback_input(payload.text, payload.context)),
     ]
     options = GenerationOptions(
-        model=settings.ollama_model,
+        model=settings.active_model,
         temperature=settings.feedback_temperature,
         json_mode=True,
     )

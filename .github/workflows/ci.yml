@@ -38,7 +38,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync
+      # Include the optional anthropic extra so the cloud provider is linted
+      # and tested in CI; end-user installs omit it (local-first default).
+      - run: uv sync --extra anthropic
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest

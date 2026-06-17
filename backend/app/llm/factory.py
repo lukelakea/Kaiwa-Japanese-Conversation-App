@@ -15,5 +15,19 @@ def build_provider(settings: Settings) -> LLMProvider:
     provider = settings.llm_provider.lower()
     if provider == "ollama":
         return OllamaProvider(base_url=settings.ollama_base_url)
-    # Future: if provider == "anthropic": return AnthropicProvider(...)
-    raise ValueError(f"Unknown LLM provider '{settings.llm_provider}'. Supported: 'ollama'.")
+    if provider == "anthropic":
+        # Imported here, not at module scope, so the optional `anthropic`
+        # dependency is only required when this provider is actually selected —
+        # the local-first Ollama path stays dependency-free.
+        if not settings.anthropic_api_key:
+            raise ValueError(
+                "KAIWA_ANTHROPIC_API_KEY is required when KAIWA_LLM_PROVIDER=anthropic."
+            )
+        from app.llm.anthropic_provider import AnthropicProvider
+
+        # TODO (post-1.0, brief §10): enforce hard spending caps for the cloud
+        # provider before exposing it beyond local/dev use.
+        return AnthropicProvider(api_key=settings.anthropic_api_key)
+    raise ValueError(
+        f"Unknown LLM provider '{settings.llm_provider}'. Supported: 'ollama', 'anthropic'."
+    )

@@ -40,7 +40,7 @@ async def chat(
         *[LLMMessage(role=m.role.value, content=m.content) for m in payload.messages],
     ]
     options = GenerationOptions(
-        model=settings.ollama_model,
+        model=settings.active_model,
         temperature=settings.temperature,
     )
 

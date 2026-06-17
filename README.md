@@ -34,15 +34,15 @@ in Japanese with an AI partner running entirely on your own machine (via
 - **Voice** — speak your turn (speech-to-text via faster-whisper) and have replies
   read aloud (text-to-speech via VOICEVOX). Both are optional; typing always works.
 - Dark, minimal UI tuned for Japanese legibility (Noto Sans JP).
-- Clean LLM **provider abstraction** — a second provider (e.g. Anthropic) can be
-  added later without touching feature code.
+- Clean LLM **provider abstraction** — Ollama (local, default) and Anthropic
+  (cloud, opt-in) are both supported; switching is one env-var change.
 
 ## Tech stack
 
 - **Frontend:** React + Vite + TypeScript + Tailwind CSS v4 (tested with Vitest)
 - **Backend:** Python + FastAPI (managed with [uv](https://docs.astral.sh/uv/),
   tested with pytest)
-- **LLM:** Ollama (local). Default model `gemma3:27b`.
+- **LLM:** Ollama (local, default) — `gemma3:27b`. Anthropic API (cloud, opt-in) — `claude-sonnet-4-6`.
 - **Japanese tooling:** [SudachiPy](https://github.com/WorksApplications/SudachiPy)
   (tokenisation + furigana), [JMdict](https://github.com/scriptin/jmdict-simplified)
   + KANJIDIC2 (dictionary), compiled into a local SQLite file.
@@ -132,11 +132,14 @@ out of the box; see `backend/.env.example` for the full list. Common overrides:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
+| `KAIWA_LLM_PROVIDER` | `ollama` | `ollama` or `anthropic` |
 | `KAIWA_OLLAMA_MODEL` | `gemma3:27b` | Ollama model used for replies |
 | `KAIWA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `KAIWA_TEMPERATURE` | `0.7` | Sampling temperature |
-| `KAIWA_TRANSLATION_TEMPERATURE` | `0.3` | Temperature for the translation pass |
-| `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Temperature for the feedback pass |
+| `KAIWA_ANTHROPIC_API_KEY` | *(unset)* | Anthropic API key (required when provider is `anthropic`) |
+| `KAIWA_ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model |
+| `KAIWA_TEMPERATURE` | `0.7` | Sampling temperature (Ollama only) |
+| `KAIWA_TRANSLATION_TEMPERATURE` | `0.3` | Temperature for the translation pass (Ollama only) |
+| `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Temperature for the feedback pass (Ollama only) |
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled JMdict + KANJIDIC2 DB |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) |
 | `KAIWA_VOICEVOX_BASE_URL` | `http://localhost:50021` | VOICEVOX local HTTP API |
@@ -146,6 +149,19 @@ out of the box; see `backend/.env.example` for the full list. Common overrides:
 
 Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in
 `frontend/.env.local`.
+
+### Switching to Anthropic
+
+1. Install the optional dependency: `uv sync --extra anthropic` (from `backend/`)
+2. Add to `backend/.env`:
+   ```
+   KAIWA_LLM_PROVIDER=anthropic
+   KAIWA_ANTHROPIC_API_KEY=sk-ant-...
+   ```
+3. Run `npm run dev` as normal — no other changes needed.
+
+The active provider and model are shown in the header and in the Settings panel.
+To switch back to Ollama, remove (or comment out) those two lines.
 
 ## Scripts
 
