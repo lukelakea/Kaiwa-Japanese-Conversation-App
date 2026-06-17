@@ -37,7 +37,7 @@ async def translate(
         LLMMessage(role="user", content=payload.text),
     ]
     options = GenerationOptions(
-        model=settings.ollama_model,
+        model=settings.active_model,
         temperature=settings.translation_temperature,
     )
 

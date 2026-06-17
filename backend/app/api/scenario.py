@@ -42,7 +42,7 @@ async def generate_scenario(
         ),
     ]
     options = GenerationOptions(
-        model=settings.ollama_model,
+        model=settings.active_model,
         temperature=0.9,
         json_mode=True,
     )

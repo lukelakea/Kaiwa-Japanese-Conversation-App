@@ -19,7 +19,16 @@ export function Tooltip({ label, children }: TooltipProps) {
   const show = () => {
     timerRef.current = setTimeout(() => {
       const rect = wrapperRef.current?.getBoundingClientRect();
-      if (rect) setPos({ x: rect.left + rect.width / 2, y: rect.bottom + 6 });
+      if (!rect) return;
+      const x = rect.left + rect.width / 2;
+      // Estimate tooltip height; flip above if near the bottom of the viewport.
+      const estimatedHeight = 28;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const y =
+        spaceBelow < estimatedHeight + 10
+          ? rect.top - estimatedHeight - 4
+          : rect.bottom + 6;
+      setPos({ x, y });
     }, 400);
   };
 

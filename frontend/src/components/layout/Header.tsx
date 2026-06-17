@@ -1,4 +1,4 @@
-import { useHealth } from '../../hooks/useHealth';
+import { useHealth, type HealthStatus } from '../../hooks/useHealth';
 import { BookmarkIcon, GearIcon, HistoryIcon, SpeakerIcon, SpeakerOffIcon } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 
@@ -14,24 +14,25 @@ interface HeaderProps {
   onToggleAutoPlay?: () => void;
 }
 
-const STATUS_DOT: Record<ReturnType<typeof useHealth>, { color: string; label: string }> = {
+const STATUS_DOT: Record<HealthStatus, { color: string; label: string }> = {
   checking: { color: 'bg-zinc-500', label: 'Checking server…' },
   online: { color: 'bg-emerald-500', label: 'Server connected' },
   offline: { color: 'bg-red-500', label: 'Server offline — is the backend running?' },
 };
 
 function ConnectionStatus() {
-  const status = useHealth();
+  const { status, info } = useHealth();
   const { color, label } = STATUS_DOT[status];
   return (
-    <span
-      title={label}
-      aria-label={label}
-      className="inline-flex h-2.5 w-2.5 items-center justify-center"
-    >
+    <span className="inline-flex items-center gap-1.5" title={label} aria-label={label}>
       <span
         className={`h-2 w-2 rounded-full ${color} ${status === 'checking' ? 'animate-pulse' : ''}`}
       />
+      {info && (
+        <span className="hidden text-xs text-zinc-500 sm:inline">
+          {info.provider} · {info.model}
+        </span>
+      )}
     </span>
   );
 }

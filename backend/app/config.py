@@ -21,7 +21,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Which provider the factory should build. v1.0 supports "ollama".
+    # Which provider the factory should build. "ollama" (local, the default) or
+    # "anthropic" (cloud, opt-in). Local-first: the app runs fully against
+    # Ollama with no cloud dependency unless this is switched.
     llm_provider: str = "ollama"
 
     # Ollama connection + default model. Model is intentionally configurable
@@ -32,6 +34,13 @@ class Settings(BaseSettings):
     # Chinese mid-reply at every temperature tried. Swap freely via .env.
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "gemma3:27b"
+
+    # Anthropic (opt-in cloud provider). The key is held server-side and never
+    # sent to the client. Sonnet is the default: a strong balance of quality and
+    # cost for high-volume conversation. Requires the "anthropic" extra
+    # (`uv sync --extra anthropic`) and KAIWA_LLM_PROVIDER=anthropic.
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-sonnet-4-6"
 
     # Default sampling temperature for conversational replies.
     temperature: float = 0.7
@@ -47,6 +56,12 @@ class Settings(BaseSettings):
     # Reading-aids dictionary (Phase 2), built by scripts/build_dictionaries.py.
     # Relative paths are resolved against the backend root.
     dictionary_path: str = "data/dictionary.sqlite"
+
+    # Local document store for the frontend's saved data (vocab, conversation
+    # history, custom scenarios, the grammar log, app settings). Persisting here
+    # rather than in browser localStorage means the data survives a cleared or
+    # changed browser. Relative paths resolve against the backend root.
+    data_dir: str = "data/store"
 
     # Origins permitted by CORS, as a comma-separated string.
     cors_origins: str = "http://localhost:5173"
@@ -65,12 +80,27 @@ class Settings(BaseSettings):
     whisper_compute_type: str = "float16"
 
     @property
+    def active_model(self) -> str:
+        """The model name for the configured provider.
+
+        Lets feature code request a model without naming a vendor: the chat /
+        translate / feedback / scenario endpoints pass this, and the factory
+        decides which provider it belongs to.
+        """
+        return self.anthropic_model if self.llm_provider == "anthropic" else self.ollama_model
+
+    @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def resolved_dictionary_path(self) -> Path:
         path = Path(self.dictionary_path)
+        return path if path.is_absolute() else _BACKEND_ROOT / path
+
+    @property
+    def resolved_data_dir(self) -> Path:
+        path = Path(self.data_dir)
         return path if path.is_absolute() else _BACKEND_ROOT / path
 
 

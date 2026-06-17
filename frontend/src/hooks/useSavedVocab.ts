@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
 import type { SavedWord } from '../types/reading';
+import { usePersistedState } from './usePersistedState';
 
-const STORAGE_KEY = 'kaiwa.vocab.v1';
+/** Old localStorage key, read once to migrate existing data to the backend. */
+const LEGACY_KEY = 'kaiwa.vocab.v1';
 
-function load(): SavedWord[] {
+function loadLegacy(): SavedWord[] | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as SavedWord[]) : [];
+    return Array.isArray(parsed) ? (parsed as SavedWord[]) : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -23,26 +25,28 @@ export interface SavedVocab {
 }
 
 /**
- * Quick vocab save backed by localStorage (brief §7). The data model is kept
- * deliberately clean (lemma/surface/reading/glosses) so it could later be
- * exported or synced — but only localStorage is built now.
+ * Quick vocab save, persisted to the backend document store (brief §7). The
+ * data model is kept clean (lemma/surface/reading/glosses) so it could later be
+ * exported or synced.
  */
 export function useSavedVocab(): SavedVocab {
-  const [words, setWords] = useState<SavedWord[]>(load);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
-  }, [words]);
+  const [words, setWords] = usePersistedState<SavedWord[]>('vocab', loadLegacy, []);
 
   const has = useCallback((lemma: string) => words.some((w) => w.lemma === lemma), [words]);
 
-  const save = useCallback((word: SavedWord) => {
-    setWords((prev) => (prev.some((w) => w.lemma === word.lemma) ? prev : [word, ...prev]));
-  }, []);
+  const save = useCallback(
+    (word: SavedWord) => {
+      setWords((prev) => (prev.some((w) => w.lemma === word.lemma) ? prev : [word, ...prev]));
+    },
+    [setWords],
+  );
 
-  const remove = useCallback((lemma: string) => {
-    setWords((prev) => prev.filter((w) => w.lemma !== lemma));
-  }, []);
+  const remove = useCallback(
+    (lemma: string) => {
+      setWords((prev) => prev.filter((w) => w.lemma !== lemma));
+    },
+    [setWords],
+  );
 
   return { words, has, save, remove };
 }

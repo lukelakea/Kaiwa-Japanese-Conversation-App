@@ -563,9 +563,37 @@ with the brief's principles. (Some committed, some still in the working tree.)
   English preview of the message being typed; feedback corrections can be translated
   on demand (`requestCorrectionTranslation`) — both reuse the existing `/api/translate`.
 
+## Post-1.0: Anthropic provider (cloud, opt-in)
+
+The provider abstraction's promised second backend, added behind the existing
+seam (brief §2, §10). Local-first is unchanged: Ollama stays the default and the
+`anthropic` dependency is an **optional extra** (`uv sync --extra anthropic`),
+imported lazily by the factory only when selected.
+
+- `backend/app/llm/anthropic_provider.py` implements `LLMProvider` over the
+  Anthropic Messages API (streaming). It reconciles two shape differences behind
+  the interface: it **hoists the `role="system"` message into the top-level
+  `system` parameter**, and it **never forwards `temperature`** (current Claude
+  models reject sampling params — register/variety is steered by the system
+  prompt). A scenario-opening request (empty turns) gets a minimal injected user
+  nudge so the API has something to answer. SDK errors map to `LLMError` → 502.
+- `factory.py` gained one branch (lazy import + key check); it is still the only
+  file naming a concrete provider. **No feature code changed** beyond swapping
+  `settings.ollama_model` → `settings.active_model` (a provider-neutral resolver)
+  in the four LLM endpoints.
+- Config: `KAIWA_ANTHROPIC_API_KEY` (server-side, never sent to the client) and
+  `KAIWA_ANTHROPIC_MODEL` (default `claude-sonnet-4-6`). Switch with
+  `KAIWA_LLM_PROVIDER=anthropic`. `/api/health` reports `active_model`.
+- Tests: `test_anthropic_provider.py` (system hoisting, temperature omission,
+  delta streaming, error translation — SDK faked, runs offline) and
+  `test_factory.py`. CI's backend job syncs `--extra anthropic` so the provider
+  is linted and tested; end-user installs omit it.
+- **Deferred (brief §10):** hard spending caps for the cloud provider — flagged
+  with a TODO in the factory.
+
 ## What is NOT implemented (post-1.0)
 
-- **Post-1.0:** Anthropic provider, gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
+- **Post-1.0:** gamification, progress tracking, kanji-app integration, long-session compaction, mobile polish.
 
 ---
 
@@ -575,9 +603,11 @@ All backend settings read from `backend/.env` (or environment), prefixed `KAIWA_
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `KAIWA_LLM_PROVIDER` | `ollama` | Provider name (only `ollama` in v1.0) |
+| `KAIWA_LLM_PROVIDER` | `ollama` | Provider name: `ollama` (local) or `anthropic` (cloud, opt-in) |
 | `KAIWA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server |
-| `KAIWA_OLLAMA_MODEL` | `gemma3:27b` | Model for all LLM calls |
+| `KAIWA_OLLAMA_MODEL` | `gemma3:27b` | Ollama model for all LLM calls |
+| `KAIWA_ANTHROPIC_API_KEY` | _(none)_ | Anthropic key (server-side); required when provider is `anthropic` |
+| `KAIWA_ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model when provider is `anthropic` |
 | `KAIWA_TEMPERATURE` | `0.7` | Sampling temperature (conversation) |
 | `KAIWA_TRANSLATION_TEMPERATURE` | `0.3` | Sampling temperature (translation pass) |
 | `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Sampling temperature (feedback pass — cool for stable JSON) |

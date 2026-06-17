@@ -10,10 +10,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, feedback, reading, scenario, stt, translate, tts
+from app.api import chat, feedback, reading, scenario, store, stt, translate, tts
 from app.config import get_settings
 from app.japanese import Dictionary, Tokenizer
 from app.llm import build_provider
+from app.storage import JsonDocumentStore
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +29,8 @@ async def lifespan(app: FastAPI):
     # if it has not been built yet (see scripts/build_dictionaries.py).
     app.state.tokenizer = Tokenizer()
     app.state.dictionary = Dictionary(settings.resolved_dictionary_path)
+    # Local document store for the frontend's saved data (vocab, history, etc.).
+    app.state.store = JsonDocumentStore(settings.resolved_data_dir)
     if not app.state.dictionary.available:
         logger.warning(
             "Dictionary not found at %s — hover-lookup will be empty. "
@@ -56,12 +59,13 @@ def create_app() -> FastAPI:
     app.include_router(translate.router, prefix="/api", tags=["translate"])
     app.include_router(feedback.router, prefix="/api", tags=["feedback"])
     app.include_router(scenario.router, prefix="/api/scenario", tags=["scenario"])
+    app.include_router(store.router, prefix="/api", tags=["store"])
     app.include_router(stt.router, prefix="/api", tags=["voice"])
     app.include_router(tts.router, prefix="/api", tags=["voice"])
 
     @app.get("/api/health", tags=["health"])
     async def health() -> dict[str, str]:
-        return {"status": "ok", "provider": settings.llm_provider, "model": settings.ollama_model}
+        return {"status": "ok", "provider": settings.llm_provider, "model": settings.active_model}
 
     return app
 
