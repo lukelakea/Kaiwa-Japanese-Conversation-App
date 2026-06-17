@@ -119,7 +119,13 @@ describe('streamChat', () => {
 
 describe('checkHealth', () => {
   it('returns true when the endpoint is ok and false when fetch throws', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true } as Response));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ status: 'ok', provider: 'ollama', model: 'gemma3:27b' }),
+      } as unknown as Response),
+    );
     expect(await checkHealth()).toBe(true);
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')));
