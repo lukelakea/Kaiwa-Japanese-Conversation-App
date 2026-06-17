@@ -82,7 +82,7 @@ _CONJUGATION_FORM_MAP: dict[str, str] = {
 
 # Maps the leading segment of SudachiPy's conjugation-type field
 # (part_of_speech()[4], e.g. "五段-カ行") to the conjugation class shown in the
-# popover. Only verb/adjective classes a learner would recognise are mapped;
+# popover. Only verb/adjective classes a learner would recognize are mapped;
 # auxiliary classes (助動詞-タ etc.) intentionally fall through to None.
 _CONJUGATION_TYPE_MAP: dict[str, str] = {
     "五段": "godan",

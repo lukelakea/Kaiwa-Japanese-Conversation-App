@@ -125,7 +125,7 @@ export const CURATED_SCENARIOS: CuratedScenario[] = [
     id: 'shopping-clothes',
     title: 'Shopping for Clothes',
     titleJa: '洋服を買いに行く',
-    hint: 'Ask about sizes, colours, and try things on',
+    hint: 'Ask about sizes, colors, and try things on',
     description:
       'A clothing shop. A customer browses and a shop assistant offers to help find what they need.',
     userRole: 'Customer (お客様)',

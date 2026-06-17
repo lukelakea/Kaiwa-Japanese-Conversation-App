@@ -26,12 +26,12 @@ class FeedbackLabel(StrEnum):
 
 
 class FeedbackRequest(BaseModel):
-    """Critique one user message, judged against the practised register.
+    """Critique one user message, judged against the practiced register.
 
     ``context`` is the assistant turn the user is replying to (``None`` for the
     opening message); it is provided only so the model can judge whether the
     reply fits, never as something to critique. ``settings`` carries the target
-    register/difficulty so feedback respects the level being practised.
+    register/difficulty so feedback respects the level being practiced.
     """
 
     text: str = Field(..., min_length=1)

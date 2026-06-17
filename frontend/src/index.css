@@ -8,7 +8,7 @@
   --font-sans: 'Noto Sans JP', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Elevation surfaces — deeper at the base, lighter as elements rise. */
-  --color-surface-0: oklch(0.16 0.006 285); /* app background */
+  --color-surface-0: oklch(0.16 0.014 285); /* app background */
   --color-surface-1: oklch(0.2 0.007 285); /* panels / bars */
   --color-surface-2: oklch(0.25 0.008 285); /* raised elements, AI bubble */
   --color-surface-3: oklch(0.3 0.009 285); /* popovers, dropdowns (highest) */

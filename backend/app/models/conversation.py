@@ -51,7 +51,7 @@ class ConversationMode(StrEnum):
 
 
 class ConversationSettings(BaseModel):
-    """The three behaviour-shaping settings, adjustable mid-conversation."""
+    """The three behavior-shaping settings, adjustable mid-conversation."""
 
     difficulty: Difficulty = Difficulty.intermediate
     formality: Formality = Formality.polite

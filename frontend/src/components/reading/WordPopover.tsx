@@ -52,18 +52,31 @@ export function WordPopover({
   const saved = has(token.lemma);
 
   const flipUp = anchor.bottom > window.innerHeight - FLIP_THRESHOLD;
-  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - POPOVER_WIDTH - 8));
+  const left = Math.max(8, Math.min(anchor.left + 16, window.innerWidth - POPOVER_WIDTH - 8));
   const style: React.CSSProperties = {
     width: POPOVER_WIDTH,
     left,
     ...(flipUp ? { bottom: window.innerHeight - anchor.top + 6 } : { top: anchor.bottom + 6 }),
   };
 
+  // Invisible bridge that fills the gap between the token and the popover so
+  // the pointer can travel diagonally without triggering the close timer.
+  const bridgeLeft = Math.max(8, anchor.left);
+  const bridgeStyle: React.CSSProperties = {
+    position: 'fixed',
+    left: bridgeLeft,
+    width: left + POPOVER_WIDTH - bridgeLeft,
+    zIndex: 49,
+    ...(flipUp ? { top: anchor.top - 8, height: 8 } : { top: anchor.bottom, height: 8 }),
+  };
+
   const toggleSave = () =>
     saved ? remove(token.lemma) : save(buildSavedWord(token, result?.words[0]));
 
   return createPortal(
-    <motion.div
+    <>
+      <div style={bridgeStyle} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} />
+      <motion.div
       role="dialog"
       variants={popVariants}
       initial="hidden"
@@ -169,7 +182,8 @@ export function WordPopover({
       {loading && <p className="text-zinc-500">Looking up…</p>}
       {error && <p className="text-zinc-500">Couldn’t load the dictionary.</p>}
       {result && !loading && <DictionaryBody words={result.words} kanji={result.kanji} />}
-    </motion.div>,
+    </motion.div>
+    </>,
     document.body,
   );
 }

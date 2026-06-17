@@ -164,7 +164,7 @@ export function TokenizedText({
                 onTokenClick?.(index);
               }
             }}
-            className={`cursor-pointer rounded transition-colors focus:outline-none ${tokenClass(index)}`}
+            className={`inline-block cursor-pointer rounded transition-colors focus:outline-none ${tokenClass(index)}`}
           >
             <TokenSurface
               token={token}
@@ -237,10 +237,12 @@ function TokenSurface({
 
   if (showRomaji) {
     return (
-      <ruby className={`romaji-ruby ${onAccent}`}>
-        {segments}
-        <rt>{toRomaji(token.reading)}</rt>
-      </ruby>
+      <span className="inline-block">
+        <ruby className={`romaji-ruby ${onAccent}`}>
+          {segments}
+          <rt>{toRomaji(token.reading)}</rt>
+        </ruby>
+      </span>
     );
   }
 

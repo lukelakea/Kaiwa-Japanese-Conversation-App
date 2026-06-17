@@ -8,7 +8,7 @@ interface SettingsBarProps {
 }
 
 /**
- * The three behaviour-shaping settings (brief §4), adjustable at any time —
+ * The three behavior-shaping settings (brief §4), adjustable at any time —
  * including mid-conversation. Changes apply to subsequent turns only.
  */
 export function SettingsBar({ settings, onChange }: SettingsBarProps) {

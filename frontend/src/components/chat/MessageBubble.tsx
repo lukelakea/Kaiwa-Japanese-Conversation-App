@@ -184,7 +184,7 @@ export function MessageBubble({
         className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
           isUser
             ? 'rounded-br-md bg-accent-600/90 text-white'
-            : 'rounded-bl-md bg-surface-2 text-zinc-100'
+            : 'rounded-bl-md border-l-2 border-accent-700/40 bg-surface-2 text-zinc-100'
         }`}
       >
         {isPending ? (

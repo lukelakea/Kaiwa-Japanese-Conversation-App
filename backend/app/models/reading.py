@@ -30,7 +30,7 @@ class Token(BaseModel):
     interactive: bool
     furigana: list[FuriganaSegment]
     # English label for the inflected form (e.g. "conjunctive", "past"), present
-    # only when the surface differs from the lemma and the form is recognised.
+    # only when the surface differs from the lemma and the form is recognized.
     conjugation_form: str | None = Field(default=None, serialization_alias="conjugationForm")
     # English label for the conjugation class (e.g. "godan", "ichidan"), present
     # for verbs and i-adjectives so the popover can explain *why* a form looks
@@ -64,7 +64,7 @@ class TokenizeResponse(BaseModel):
 
 
 class WordSense(BaseModel):
-    # Serialised as camelCase to match the TS client (FastAPI emits response
+    # Serialized as camelCase to match the TS client (FastAPI emits response
     # models by alias). It is the one multi-word field crossing the wire.
     part_of_speech: list[str] = Field(serialization_alias="partOfSpeech")
     glosses: list[str]

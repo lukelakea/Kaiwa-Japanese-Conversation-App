@@ -15,7 +15,7 @@ in Japanese with an AI partner running entirely on your own machine (via
 
 - **Streaming Japanese conversation** with a local LLM, with full history kept in
   context each turn.
-- **Three behaviour controls, adjustable mid-conversation:**
+- **Three behavior controls, adjustable mid-conversation:**
   - **Difficulty** — Beginner · Intermediate · Advanced · Near-Fluent
   - **Register** — Casual · Friendly · Polite · Formal
   - **Initiative** — AI-led · Balanced · User-led
@@ -30,7 +30,7 @@ in Japanese with an AI partner running entirely on your own machine (via
   - **Quick vocab save** — one-click save of a word to your browser.
 - **Inline feedback** — each message you send gets a collapsible, non-intrusive
   critique (in English, with the corrected Japanese), judged against the register
-  you're practising. Grammar corrections can be saved for review.
+  you're practicing. Grammar corrections can be saved for review.
 - **Voice** — speak your turn (speech-to-text via faster-whisper) and have replies
   read aloud (text-to-speech via VOICEVOX). Both are optional; typing always works.
 - Dark, minimal UI tuned for Japanese legibility (Noto Sans JP).
@@ -143,7 +143,7 @@ out of the box; see `backend/.env.example` for the full list. Common overrides:
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled JMdict + KANJIDIC2 DB |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) |
 | `KAIWA_VOICEVOX_BASE_URL` | `http://localhost:50021` | VOICEVOX local HTTP API |
-| `KAIWA_VOICEVOX_SPEAKER` | `1` | VOICEVOX speaker ID |
+| `KAIWA_VOICEVOX_SPEAKER` | `2` | VOICEVOX speaker ID |
 | `KAIWA_WHISPER_MODEL` | `base` | faster-whisper model size |
 | `KAIWA_WHISPER_DEVICE` | `cuda` | faster-whisper device (`cuda` or `cpu`) |
 
@@ -186,7 +186,7 @@ uv run --directory backend python scripts/eval_models.py
 - Very long sessions will eventually approach the model's context window; the
   full history is sent each turn (no summarisation yet). Acceptable for v1.0.
 - Switching register *mid-conversation* shifts the next reply's tone but may be
-  gradual, since the model also honours the existing conversation's register.
+  gradual, since the model also honors the existing conversation's register.
 - Feedback and generated-scenario quality depend on the local model's judgement;
   the response *shape* is enforced, the linguistic judgement is not.
 

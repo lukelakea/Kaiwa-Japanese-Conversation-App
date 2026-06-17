@@ -37,7 +37,7 @@ const AUX_TAGS: Record<string, string> = {
 /**
  * Find every inflection chain in `tokens`: a content word followed by one or
  * more auxiliaries whose lemma is in `AUX_TAGS`. Chains never overlap, and a
- * single content word with no recognised auxiliary tail is not a chain.
+ * single content word with no recognized auxiliary tail is not a chain.
  */
 export function findInflectionChains(tokens: Token[]): InflectionChain[] {
   const chains: InflectionChain[] = [];

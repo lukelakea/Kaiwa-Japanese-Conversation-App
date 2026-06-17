@@ -14,7 +14,7 @@ Return a single JSON object with exactly these keys:
 }
 
 Rules:
-- The scenario must be realistic and useful for practising conversational Japanese.
+- The scenario must be realistic and useful for practicing conversational Japanese.
 - Make it specific enough to have clear conversational stakes (ordering something,
   asking for something, discussing something, meeting someone, etc.).
 - The ai_role should speak in a register that fits the situation naturally.

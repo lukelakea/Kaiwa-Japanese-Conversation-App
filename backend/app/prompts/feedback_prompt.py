@@ -3,14 +3,14 @@
 Feedback is its own LLM call, independent of the conversation reply, so the two
 run in parallel: the critique depends only on the user's message and the turn it
 replies to, never on the assistant's answer. It evaluates the user's Japanese
-against the register they are practising and is asked to emit a single JSON
+against the register they are practicing and is asked to emit a single JSON
 object the UI renders as a collapsible annotation.
 """
 
 from app.models.conversation import ConversationSettings, Formality
 
 # How the learner's *target* register is described to the critic. Phrased as the
-# standard they are practising against (distinct from app.prompts.system_prompt,
+# standard they are practicing against (distinct from app.prompts.system_prompt,
 # which tells the AI how to speak) — so casual practice is never "corrected" up
 # to です・ます, and vice versa.
 _REGISTER_TARGET: dict[Formality, str] = {
@@ -27,10 +27,10 @@ context is provided solely so you can tell whether their reply makes sense — d
 not critique the context.
 
 Assess whether the message is natural, correct Japanese for the register the \
-learner is practising. Be encouraging and proportionate: only flag things a \
+learner is practicing. Be encouraging and proportionate: only flag things a \
 native speaker would actually notice or that impede understanding. Minor, \
 acceptable stylistic choices are fine. Never ask them to switch to a different \
-register than the one they are practising.
+register than the one they are practicing.
 
 Reply with a SINGLE JSON object with exactly these keys:
 - "acceptable": boolean — true when the message is already natural and correct \
@@ -51,7 +51,7 @@ Write "explanation" in English even though the conversation is in Japanese."""
 def compose_feedback_prompt(settings: ConversationSettings) -> str:
     """Assemble the feedback system prompt for the learner's target register."""
     target = _REGISTER_TARGET[settings.formality]
-    return f"{_INSTRUCTIONS}\n\nThe learner is practising {target}."
+    return f"{_INSTRUCTIONS}\n\nThe learner is practicing {target}."
 
 
 def format_feedback_input(text: str, context: str | None) -> str:

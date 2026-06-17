@@ -128,7 +128,7 @@ export function Header({
           type="button"
           onClick={onReset}
           disabled={!canReset}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-border-strong hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg border border-accent-700/50 bg-accent-700/10 px-3 py-1.5 text-sm text-accent-300 transition-colors hover:border-accent-600/60 hover:bg-accent-700/20 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
           New conversation
         </button>

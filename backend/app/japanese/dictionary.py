@@ -229,7 +229,7 @@ def _parse_word(record: dict[str, Any], key: str) -> WordEntry:
     # When falling back, prefer a kanji headword (事 over こと) — but only if it
     # contains a real kanji: some entries list a non-ideographic symbol as their
     # "kanji" form (the polite auxiliary ます has 〼 U+303C, a MASU ligature), which
-    # no learner would recognise, so show the kana headword instead.
+    # no learner would recognize, so show the kana headword instead.
     real_kanji = [k for k in kanji_forms if _has_kanji(k)]
     fallback_text = real_kanji[0] if real_kanji else (kana_forms[0] if kana_forms else "")
     text = key if key in kanji_forms else fallback_text

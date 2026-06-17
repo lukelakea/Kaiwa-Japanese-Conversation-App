@@ -1,6 +1,6 @@
 """Tests for system-prompt composition (brief §4, §5).
 
-The prompt is the single place behaviour-shaping lives, so these assert that
+The prompt is the single place behavior-shaping lives, so these assert that
 each setting and mode contributes its fragment and that the structure is stable
 across the full settings matrix — the contract feature code depends on.
 """
