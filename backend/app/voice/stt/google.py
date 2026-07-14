@@ -48,9 +48,7 @@ class GoogleSTTProvider(STTProvider):
             raise STTError("Could not reach Google Cloud Speech-to-Text.") from exc
         except httpx.HTTPStatusError as exc:
             logger.warning("Google STT error: %s", exc)
-            raise STTError(
-                f"Google Speech-to-Text returned {exc.response.status_code}."
-            ) from exc
+            raise STTError(f"Google Speech-to-Text returned {exc.response.status_code}.") from exc
 
         # Concatenate the top alternative of each result segment. A request with
         # no recognizable speech comes back with no "results" key at all.

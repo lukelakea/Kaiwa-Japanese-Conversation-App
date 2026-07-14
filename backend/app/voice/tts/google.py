@@ -50,9 +50,7 @@ class GoogleTTSProvider(TTSProvider):
             raise TTSError("Could not reach Google Cloud Text-to-Speech.") from exc
         except httpx.HTTPStatusError as exc:
             logger.warning("Google TTS error: %s", exc)
-            raise TTSError(
-                f"Google Text-to-Speech returned {exc.response.status_code}."
-            ) from exc
+            raise TTSError(f"Google Text-to-Speech returned {exc.response.status_code}.") from exc
 
         audio_b64 = resp.json().get("audioContent")
         if not audio_b64:

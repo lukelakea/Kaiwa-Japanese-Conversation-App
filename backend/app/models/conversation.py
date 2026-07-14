@@ -97,14 +97,10 @@ class ChatRequest(BaseModel):
     @model_validator(mode="after")
     def _check_history_size(self) -> "ChatRequest":
         if len(self.messages) > self._MAX_MESSAGES:
-            raise ValueError(
-                f"Message history exceeds {self._MAX_MESSAGES} messages."
-            )
+            raise ValueError(f"Message history exceeds {self._MAX_MESSAGES} messages.")
         total = sum(len(m.content) for m in self.messages)
         if total > self._MAX_HISTORY_CHARS:
-            raise ValueError(
-                f"Message history exceeds {self._MAX_HISTORY_CHARS} characters."
-            )
+            raise ValueError(f"Message history exceeds {self._MAX_HISTORY_CHARS} characters.")
         return self
 
 

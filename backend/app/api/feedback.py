@@ -88,10 +88,11 @@ def _parse_feedback(raw: str) -> FeedbackResponse | None:
     try:
         return FeedbackResponse(
             acceptable=acceptable,
-            # Labels, correction, and explanation only matter for non-acceptable messages.
+            # Labels and correction only matter for non-acceptable messages; explanation
+            # is shown either way (e.g. an encouraging note on an acceptable message).
             labels=labels if not acceptable else [],
             correction=correction or None if not acceptable else None,
-            explanation=(explanation or _fallback_explanation()) if not acceptable else None,
+            explanation=explanation or _fallback_explanation(),
         )
     except ValidationError:
         return None
@@ -107,7 +108,6 @@ def _extract_json_object(raw: str) -> object:
         return json.loads(text[start : end + 1])
     except json.JSONDecodeError:
         return None
-
 
 
 def _fallback_explanation() -> str:

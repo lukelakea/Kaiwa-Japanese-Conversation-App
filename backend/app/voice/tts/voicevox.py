@@ -33,9 +33,7 @@ class VoicevoxProvider(TTSProvider):
                 f"VOICEVOX is not running. Start VOICEVOX so it is available at {self._base}."
             ) from exc
         except httpx.HTTPStatusError as exc:
-            raise TTSError(
-                f"VOICEVOX /speakers returned {exc.response.status_code}."
-            ) from exc
+            raise TTSError(f"VOICEVOX /speakers returned {exc.response.status_code}.") from exc
 
         options: list[SpeakerOption] = []
         for speaker in resp.json():
@@ -60,9 +58,7 @@ class VoicevoxProvider(TTSProvider):
             ) from exc
         except httpx.HTTPStatusError as exc:
             logger.warning("VOICEVOX audio_query error: %s", exc)
-            raise TTSError(
-                f"VOICEVOX audio_query returned {exc.response.status_code}."
-            ) from exc
+            raise TTSError(f"VOICEVOX audio_query returned {exc.response.status_code}.") from exc
 
         query = q_resp.json()
 
@@ -77,9 +73,7 @@ class VoicevoxProvider(TTSProvider):
             synth_resp.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logger.warning("VOICEVOX synthesis error: %s", exc)
-            raise TTSError(
-                f"VOICEVOX synthesis returned {exc.response.status_code}."
-            ) from exc
+            raise TTSError(f"VOICEVOX synthesis returned {exc.response.status_code}.") from exc
 
         return TTSResult(
             audio=synth_resp.content,
