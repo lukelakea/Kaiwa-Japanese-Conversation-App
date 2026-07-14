@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.api.tts import _extract_mora_timings
+from app.voice.tts.voicevox import _extract_mora_timings
 
 
 def _mora(text: str, consonant_length: float | None, vowel_length: float) -> dict:

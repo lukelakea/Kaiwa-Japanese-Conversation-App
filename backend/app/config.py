@@ -66,6 +66,26 @@ class Settings(BaseSettings):
     # Origins permitted by CORS, as a comma-separated string.
     cors_origins: str = "http://localhost:5173"
 
+    # Per-IP request rate limit(s), as a comma-separated list of slowapi limit
+    # strings (e.g. "30/minute,500/hour"). Empty disables limiting — the right
+    # default for the local single-user app. Set it on the public deployment to
+    # cap abuse of the metered cloud providers (Anthropic / Google).
+    rate_limit: str = ""
+
+    # --- Voice provider selection ---
+    # TTS: "voicevox" (local, default) or "google" (cloud). STT: "whisper"
+    # (local, default) or "google" (cloud). Local-first: both default to the
+    # local engine; the cloud options exist for the hosted demo where VOICEVOX
+    # and a GPU aren't available. Both cloud options share one Google key.
+    tts_provider: str = "voicevox"
+    stt_provider: str = "whisper"
+
+    # Google Cloud API key for the cloud TTS/STT providers. Held server-side and
+    # never sent to the browser. Required only when a provider above is "google".
+    google_cloud_api_key: str | None = None
+    # Google Cloud TTS voice. Neural2-B is a natural-sounding Japanese voice.
+    google_tts_voice: str = "ja-JP-Neural2-B"
+
     # --- Voice (Phase 5) ---
     # VOICEVOX local HTTP API. Speaker 1 = 四国めたん ノーマル; see VOICEVOX
     # for the full speaker list. VOICEVOX must be running before TTS is used.

@@ -13,8 +13,8 @@ export interface Feedback {
   labels: FeedbackLabel[];
   /** The corrected, natural Japanese — null when the message is acceptable. */
   correction: string | null;
-  /** English confirmation, or what to change and why (brief §8). */
-  explanation: string;
+  /** What to change and why — null when the message is acceptable. */
+  explanation: string | null;
 }
 
 /** Whether a message's feedback is loading or failed. */

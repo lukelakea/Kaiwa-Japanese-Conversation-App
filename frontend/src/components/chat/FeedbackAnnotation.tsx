@@ -65,33 +65,36 @@ export function FeedbackAnnotation({
   return (
     <div className="mt-1 w-full max-w-[80%]">
       <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors ${
-            acceptable
-              ? 'text-emerald-400/80 hover:bg-emerald-400/10'
-              : 'text-amber-400/90 hover:bg-amber-400/10'
-          }`}
-        >
-          {acceptable ? <CheckIcon className="h-3.5 w-3.5" /> : <ChatIcon className="h-3.5 w-3.5" />}
-          <span>{acceptable ? 'Looks good' : 'Suggestion'}</span>
-          {!acceptable && feedback.labels.length > 0 && (
-            <span className="flex gap-1">
-              {feedback.labels.map((label) => (
-                <LabelChip key={label} label={label} />
-              ))}
-            </span>
-          )}
-          <ChevronRightIcon
-            className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
-          />
-        </button>
+        {acceptable ? (
+          <span className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-emerald-400/80">
+            <CheckIcon className="h-3.5 w-3.5" />
+            <span>Looks good</span>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-amber-400/90 transition-colors hover:bg-amber-400/10"
+          >
+            <ChatIcon className="h-3.5 w-3.5" />
+            <span>Suggestion</span>
+            {feedback.labels.length > 0 && (
+              <span className="flex gap-1">
+                {feedback.labels.map((label) => (
+                  <LabelChip key={label} label={label} />
+                ))}
+              </span>
+            )}
+            <ChevronRightIcon
+              className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+        )}
         {trailingAction}
       </div>
 
-      {expanded && (
+      {expanded && !acceptable && (
         <FeedbackDetail
           message={message}
           feedback={feedback}
@@ -150,7 +153,7 @@ function GrammarSaveButton({ original, feedback }: { original: string; feedback:
   return (
     <button
       type="button"
-      onClick={() => save({ original, correction, explanation: feedback.explanation })}
+      onClick={() => save({ original, correction, explanation: feedback.explanation ?? '' })}
       disabled={saved}
       className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors ${
         saved

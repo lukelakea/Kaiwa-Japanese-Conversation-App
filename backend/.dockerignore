@@ -1,0 +1,11 @@
+# Keep the build context (and image) lean.
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+tests/
+# Regenerated inside the image at build time (see Dockerfile).
+data/
+.env
+.env.*

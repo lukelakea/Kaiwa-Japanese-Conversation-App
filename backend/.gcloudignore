@@ -1,0 +1,15 @@
+# Controls what `gcloud run deploy --source` uploads to Cloud Build. gcloud
+# does NOT read .dockerignore or the repo-root .gitignore, so this mirrors
+# .dockerignore — most critically keeping the local .env (real keys) out of
+# the Cloud Build staging bucket.
+.gcloudignore
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+tests/
+data/
+.env
+.env.*
+!.env.example
