@@ -153,7 +153,7 @@ function GrammarSaveButton({ original, feedback }: { original: string; feedback:
   return (
     <button
       type="button"
-      onClick={() => save({ original, correction, explanation: feedback.explanation })}
+      onClick={() => save({ original, correction, explanation: feedback.explanation ?? '' })}
       disabled={saved}
       className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors ${
         saved
