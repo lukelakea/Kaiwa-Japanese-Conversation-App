@@ -88,10 +88,10 @@ def _parse_feedback(raw: str) -> FeedbackResponse | None:
     try:
         return FeedbackResponse(
             acceptable=acceptable,
-            # Labels and a correction only make sense for a non-acceptable message.
+            # Labels, correction, and explanation only matter for non-acceptable messages.
             labels=labels if not acceptable else [],
             correction=correction or None if not acceptable else None,
-            explanation=explanation or _fallback_explanation(acceptable),
+            explanation=(explanation or _fallback_explanation()) if not acceptable else None,
         )
     except ValidationError:
         return None
@@ -109,5 +109,6 @@ def _extract_json_object(raw: str) -> object:
         return None
 
 
-def _fallback_explanation(acceptable: bool) -> str:
-    return "This looks natural." if acceptable else "This could be phrased more naturally."
+
+def _fallback_explanation() -> str:
+    return "This could be phrased more naturally."

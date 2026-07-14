@@ -47,5 +47,5 @@ class FeedbackResponse(BaseModel):
     labels: list[FeedbackLabel] = []
     # The corrected, natural Japanese. ``None`` when the message is acceptable.
     correction: str | None = None
-    # Written in English (brief §8): a short confirmation, or what to change.
-    explanation: str
+    # Written in English (brief §8): what to change. ``None`` when acceptable.
+    explanation: str | None = None

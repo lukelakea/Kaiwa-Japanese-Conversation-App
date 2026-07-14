@@ -188,12 +188,16 @@ export async function fetchSpeakers(signal?: AbortSignal): Promise<SpeakerOption
 /** Synthesised audio plus per-mora timing data for sync'd text highlighting. */
 export interface SynthesizeResult {
   audio: ArrayBuffer;
+  /** MIME type of the audio bytes — "audio/wav" (VOICEVOX) or "audio/mpeg" (Google). */
+  mimeType: string;
+  /** Empty when the provider gives no timing (Google) — playback works, highlight is skipped. */
   moras: MoraTiming[];
 }
 
 /**
- * Synthesise Japanese text to speech via VOICEVOX (Phase 5).
- * Returns WAV audio (for the Web Audio API) plus per-mora timings.
+ * Synthesise Japanese text to speech (Phase 5). The backend's configured engine
+ * (VOICEVOX or Google Cloud) is transparent here — the response carries the
+ * audio's MIME type and any per-mora timings.
  * Pass speakerId to override the server default; omit to use the server config.
  */
 export async function synthesize(
@@ -216,8 +220,16 @@ export async function synthesize(
     throw new ApiError('Could not reach the Kaiwa server. Is the backend running?');
   }
   if (!response.ok) throw new ApiError(await extractErrorDetail(response));
-  const data = (await response.json()) as { audio: string; moras: MoraTiming[] };
-  return { audio: base64ToArrayBuffer(data.audio), moras: data.moras };
+  const data = (await response.json()) as {
+    audio: string;
+    mime_type: string;
+    moras: MoraTiming[];
+  };
+  return {
+    audio: base64ToArrayBuffer(data.audio),
+    mimeType: data.mime_type,
+    moras: data.moras,
+  };
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {

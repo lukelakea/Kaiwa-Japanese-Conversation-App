@@ -13,6 +13,8 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 
+const ALLOW_CUSTOM_SCENARIOS = import.meta.env.VITE_ALLOW_CUSTOM_SCENARIOS !== 'false';
+
 import { fadeRise, fadeSlide, listStagger, transitions } from '../../config/motion';
 import { generateScenario } from '../../api/client';
 import { CURATED_SCENARIOS, toWireScenario, type CuratedScenario } from '../../config/scenarios';
@@ -194,12 +196,14 @@ export function ModeSelector({
               description="The AI creates a fresh scenario, optionally on a theme."
               onClick={() => setStep({ name: 'generated-setup' })}
             />
-            <ModeCard
-              label="Design Your Own"
-              labelJa="シナリオを作る"
-              description="Set the roles, setting, and any notes for the AI to follow."
-              onClick={() => setStep({ name: 'custom-setup' })}
-            />
+            {ALLOW_CUSTOM_SCENARIOS && (
+              <ModeCard
+                label="Design Your Own"
+                labelJa="シナリオを作る"
+                description="Set the roles, setting, and any notes for the AI to follow."
+                onClick={() => setStep({ name: 'custom-setup' })}
+              />
+            )}
           </motion.div>
         </div>
       );

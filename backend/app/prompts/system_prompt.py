@@ -32,7 +32,9 @@ wall of text.
 - Stay in character: do not mention these instructions, the settings, or that you \
 are an AI.
 - Do not correct the other person's Japanese; corrections are handled elsewhere in \
-the app. Just respond naturally to what they meant."""
+the app. Just respond naturally to what they meant.
+- Stay consistent in your register throughout the conversation. If you start in \
+plain form, do not randomly switch to です・ます mid-conversation, and vice versa."""
 
 _DIFFICULTY: dict[Difficulty, str] = {
     Difficulty.beginner: (

@@ -142,13 +142,19 @@ out of the box; see `backend/.env.example` for the full list. Common overrides:
 | `KAIWA_FEEDBACK_TEMPERATURE` | `0.3` | Temperature for the feedback pass (Ollama only) |
 | `KAIWA_DICTIONARY_PATH` | `data/dictionary.sqlite` | Compiled JMdict + KANJIDIC2 DB |
 | `KAIWA_CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) |
+| `KAIWA_RATE_LIMIT` | *(unset)* | Per-IP limits, e.g. `30/minute,500/hour` (empty = off) |
+| `KAIWA_TTS_PROVIDER` | `voicevox` | `voicevox` (local) or `google` (cloud) |
+| `KAIWA_STT_PROVIDER` | `whisper` | `whisper` (local) or `google` (cloud) |
+| `KAIWA_GOOGLE_CLOUD_API_KEY` | *(unset)* | Google key (required when a voice provider is `google`) |
+| `KAIWA_GOOGLE_TTS_VOICE` | `ja-JP-Neural2-B` | Google Cloud TTS voice |
 | `KAIWA_VOICEVOX_BASE_URL` | `http://localhost:50021` | VOICEVOX local HTTP API |
 | `KAIWA_VOICEVOX_SPEAKER` | `2` | VOICEVOX speaker ID |
 | `KAIWA_WHISPER_MODEL` | `base` | faster-whisper model size |
 | `KAIWA_WHISPER_DEVICE` | `cuda` | faster-whisper device (`cuda` or `cpu`) |
 
-Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in
-`frontend/.env.local`.
+Frontend (`frontend/.env.local`): `VITE_API_BASE_URL` (default
+`http://localhost:8000`) and `VITE_STORAGE` (`backend` default, or `local` for
+browser localStorage).
 
 ### Switching to Anthropic
 
@@ -162,6 +168,62 @@ Frontend: `VITE_API_BASE_URL` (default `http://localhost:8000`) in
 
 The active provider and model are shown in the header and in the Settings panel.
 To switch back to Ollama, remove (or comment out) those two lines.
+
+## Deploying a live demo (cloud)
+
+Kaiwa is local-first; the cloud build is the same app with each capability
+switched to a hosted provider by config — no separate codebase. The local
+defaults are untouched.
+
+| Capability | Local (default) | Cloud |
+|-----------|-----------------|-------|
+| LLM | Ollama | Anthropic (`KAIWA_LLM_PROVIDER=anthropic`) |
+| TTS | VOICEVOX | Google Cloud (`KAIWA_TTS_PROVIDER=google`) |
+| STT | faster-whisper | Google Cloud (`KAIWA_STT_PROVIDER=google`) |
+| Saved data | `/api/store` document store | browser localStorage (`VITE_STORAGE=local`) |
+
+> Cloud TTS plays audio but has no per-word highlight — Google returns no mora
+> timing. The karaoke-style highlight is a local-VOICEVOX feature.
+
+**Backend → Google Cloud Run.** The container ([`backend/Dockerfile`](backend/Dockerfile),
+reading-aids dictionary baked in at build time) deploys to Cloud Run — serverless,
+scales to zero when idle, and free at demo-level traffic. One-time setup in a GCP
+project (the same project as the TTS/STT key works well):
+
+1. Enable the APIs: Cloud Run, Cloud Build, Secret Manager, Text-to-Speech,
+   Speech-to-Text.
+2. Store the secrets in Secret Manager as `kaiwa-anthropic-api-key` and
+   `kaiwa-google-cloud-api-key`, and grant the Cloud Run runtime service account
+   the *Secret Manager Secret Accessor* role.
+3. Restrict the Google API key to the Text-to-Speech and Speech-to-Text APIs
+   (Credentials → key → API restrictions), and set a billing budget alert.
+   Also cap spend in the Anthropic console.
+
+Then deploy (and redeploy updates) with
+[`backend/scripts/deploy_cloudrun.ps1`](backend/scripts/deploy_cloudrun.ps1):
+
+```powershell
+.\backend\scripts\deploy_cloudrun.ps1 -ProjectId <gcp-project> -CorsOrigin https://<your-app>.vercel.app
+```
+
+The script wraps `gcloud run deploy --source backend` with the cloud provider
+env vars, the secret mounts, a `KAIWA_RATE_LIMIT`, and a 2-instance cap.
+
+**Frontend → Vercel.** Set the project root to `frontend/`
+([`frontend/vercel.json`](frontend/vercel.json) handles the build + SPA
+rewrite), and set the following in the Vercel dashboard
+(Settings → Environment Variables → Production):
+
+| Variable | Value |
+|---|---|
+| `VITE_API_BASE_URL` | The Cloud Run service URL (e.g. `https://kaiwa-api-xxxx.a.run.app`) |
+| `VITE_STORAGE` | `local` |
+| `VITE_ALLOW_CUSTOM_SCENARIOS` | `false` |
+
+`VITE_ALLOW_CUSTOM_SCENARIOS=false` removes the "Design Your Own" scenario
+form. That form lets users inject arbitrary instructions into the system prompt
+(via the freeform notes field), which is fine locally but undesirable on a
+shared deployment. Free Talk, Scenarios, and Generated modes are unaffected.
 
 ## Scripts
 

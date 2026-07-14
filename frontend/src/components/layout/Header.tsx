@@ -1,17 +1,20 @@
 import { useHealth, type HealthStatus } from '../../hooks/useHealth';
-import { BookmarkIcon, GearIcon, HistoryIcon, SpeakerIcon, SpeakerOffIcon } from '../ui/icons';
+import type { ConversationSettings } from '../../types/conversation';
+import { SettingsBar } from '../settings/SettingsBar';
+import { BookmarkIcon, GearIcon, SpeakerIcon, SpeakerOffIcon } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 
 interface HeaderProps {
   onReset: () => void;
-  canReset: boolean;
   scenarioTitle?: string;
   onOpenSettings: () => void;
-  onOpenHistory: () => void;
   onOpenSaved: () => void;
   savedCount?: number;
   ttsAutoPlay?: boolean;
   onToggleAutoPlay?: () => void;
+  settings: ConversationSettings;
+  onSettingsChange: (s: ConversationSettings) => void;
+  conversationActive: boolean;
 }
 
 const STATUS_DOT: Record<HealthStatus, { color: string; label: string }> = {
@@ -39,17 +42,19 @@ function ConnectionStatus() {
 
 export function Header({
   onReset,
-  canReset,
   scenarioTitle,
   onOpenSettings,
-  onOpenHistory,
   onOpenSaved,
   savedCount,
   ttsAutoPlay,
   onToggleAutoPlay,
+  settings,
+  onSettingsChange,
+  conversationActive,
 }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3">
+    <header className="grid grid-cols-3 items-center bg-surface-1 px-4 pb-1.5 pt-3">
+      {/* Left */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -68,7 +73,17 @@ export function Header({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+
+      {/* Center — always rendered for consistent row height */}
+      <div
+        className={`flex items-center justify-center gap-2 ${!conversationActive ? 'invisible pointer-events-none' : ''}`}
+        aria-hidden={!conversationActive}
+      >
+        <SettingsBar settings={settings} onChange={onSettingsChange} />
+      </div>
+
+      {/* Right */}
+      <div className="flex items-center justify-end gap-2">
         {onToggleAutoPlay && (
           <Tooltip label={ttsAutoPlay ? 'Auto-play on' : 'Auto-play off'}>
             <button
@@ -104,16 +119,6 @@ export function Header({
             )}
           </button>
         </Tooltip>
-        <Tooltip label="History">
-          <button
-            type="button"
-            onClick={onOpenHistory}
-            aria-label="Conversation history"
-            className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
-          >
-            <HistoryIcon className="h-4 w-4" />
-          </button>
-        </Tooltip>
         <Tooltip label="Settings">
           <button
             type="button"
@@ -124,14 +129,6 @@ export function Header({
             <GearIcon className="h-4 w-4" />
           </button>
         </Tooltip>
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={!canReset}
-          className="rounded-lg border border-accent-700/50 bg-accent-700/10 px-3 py-1.5 text-sm text-accent-300 transition-colors hover:border-accent-600/60 hover:bg-accent-700/20 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          New conversation
-        </button>
       </div>
     </header>
   );

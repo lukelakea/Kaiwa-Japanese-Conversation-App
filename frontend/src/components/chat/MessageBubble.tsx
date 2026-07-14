@@ -109,8 +109,8 @@ export function MessageBubble({
     stopWordAudio();
 
     try {
-      const { audio: buffer } = await synthesize(token.surface, ttsVoice);
-      const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+      const { audio: buffer, mimeType } = await synthesize(token.surface, ttsVoice);
+      const url = URL.createObjectURL(new Blob([buffer], { type: mimeType }));
       wordBlobUrlRef.current = url;
       const audio = new Audio(url);
       audio.playbackRate = ttsSpeed;
@@ -341,8 +341,8 @@ const TtsButton = forwardRef<
     if (ttsStatus === 'loading') return;
     setTtsStatus('loading');
     try {
-      const { audio: buffer, moras } = await synthesize(text, ttsVoice);
-      const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+      const { audio: buffer, moras, mimeType } = await synthesize(text, ttsVoice);
+      const url = URL.createObjectURL(new Blob([buffer], { type: mimeType }));
       blobUrlRef.current = url;
       const audio = new Audio(url);
       audio.playbackRate = ttsSpeed;

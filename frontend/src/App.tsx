@@ -9,8 +9,9 @@ import { Header } from './components/layout/Header';
 import { ReadingControls } from './components/reading/ReadingControls';
 import { SavedPanel } from './components/reading/SavedPanel';
 import { AppSettingsPanel } from './components/settings/AppSettingsPanel';
-import { SettingsBar } from './components/settings/SettingsBar';
 import { ErrorBanner } from './components/ui/ErrorBanner';
+import { HistoryIcon } from './components/ui/icons';
+import { Tooltip } from './components/ui/Tooltip';
 import { DEFAULT_SETTINGS } from './config/settings';
 import { SavedGrammarContext } from './context/SavedGrammarContext';
 import { SavedVocabContext } from './context/SavedVocabContext';
@@ -168,20 +169,46 @@ export default function App() {
         <div className="flex h-dvh flex-col bg-surface-0">
           <Header
             onReset={handleReset}
-            canReset={conversationActive}
             scenarioTitle={activeScenario?.title_ja}
             onOpenSettings={() => setSettingsOpen(true)}
-            onOpenHistory={() => setHistoryOpen(true)}
             onOpenSaved={() => setSavedOpen(true)}
             savedCount={savedVocab.words.length + savedGrammar.items.length}
             ttsAutoPlay={appSettings.ttsAutoPlay}
             onToggleAutoPlay={() => updateAppSettings({ ttsAutoPlay: !appSettings.ttsAutoPlay })}
+            settings={settings}
+            onSettingsChange={setSettings}
+            conversationActive={conversationActive}
           />
 
-          {conversationActive && (
-            <div className="border-b border-border bg-surface-1 px-4 py-2">
-              <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-2">
-                <SettingsBar settings={settings} onChange={setSettings} />
+          <div className="border-b border-border bg-surface-1 px-4 pb-2 pt-1">
+            <div className="grid grid-cols-3 items-center">
+              {/* Left */}
+              <div className="flex items-center gap-2">
+                <Tooltip label="History">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpen(true)}
+                    aria-label="Conversation history"
+                    className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
+                  >
+                    <HistoryIcon className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={!conversationActive}
+                  className="rounded-lg border border-accent-700/50 bg-accent-700/10 px-3 py-1.5 text-sm text-accent-300 transition-colors hover:border-accent-600/60 hover:bg-accent-700/20 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  New conversation
+                </button>
+              </div>
+
+              {/* Center — always rendered for consistent row height */}
+              <div
+                className={`flex items-center justify-center gap-2 ${!conversationActive ? 'invisible pointer-events-none' : ''}`}
+                aria-hidden={!conversationActive}
+              >
                 <ReadingControls
                   showFurigana={showFurigana}
                   onToggleFurigana={() => setShowFurigana((v) => !v)}
@@ -191,8 +218,11 @@ export default function App() {
                   onToggleTranslation={() => setShowTranslation((v) => !v)}
                 />
               </div>
+
+              {/* Right — empty spacer to balance the left column */}
+              <div />
             </div>
-          )}
+          </div>
 
           {conversationActive ? (
             <main className="flex-1 overflow-y-auto">

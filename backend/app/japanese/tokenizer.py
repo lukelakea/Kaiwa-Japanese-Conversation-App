@@ -15,7 +15,7 @@ import threading
 
 from sudachipy import Dictionary, SplitMode
 
-from app.japanese.kana import kata_to_hira
+from app.japanese.kana import kata_to_hira, normalize_unicode
 from app.models.reading import FuriganaSegment, Token
 
 # Map SudachiPy's top-level (Japanese) part-of-speech to a compact English
@@ -235,6 +235,7 @@ class Tokenizer:
         Newlines are preserved as their own whitespace tokens so multi-line
         replies round-trip and render with their original line breaks.
         """
+        text = normalize_unicode(text)
         tokens: list[Token] = []
         for index, line in enumerate(text.split("\n")):
             if index:

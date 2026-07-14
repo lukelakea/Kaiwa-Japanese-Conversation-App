@@ -8,7 +8,7 @@ model is prompted. Prompt composition lives in ``app.prompts``.
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Role(StrEnum):
@@ -84,10 +84,28 @@ class ChatRequest(BaseModel):
     opens the conversation based on the scenario framing in the system prompt.
     """
 
+    # 100 turns ≈ a very long session; 50 chars/msg ≈ generous Japanese reply.
+    # The real-world ceiling is well under both; these reject abuse, not real use.
+    _MAX_MESSAGES = 100
+    _MAX_HISTORY_CHARS = 50_000
+
     messages: list[Message] = Field(default_factory=list)
     settings: ConversationSettings = ConversationSettings()
     mode: ConversationMode = ConversationMode.free_talk
     scenario: Scenario | None = None
+
+    @model_validator(mode="after")
+    def _check_history_size(self) -> "ChatRequest":
+        if len(self.messages) > self._MAX_MESSAGES:
+            raise ValueError(
+                f"Message history exceeds {self._MAX_MESSAGES} messages."
+            )
+        total = sum(len(m.content) for m in self.messages)
+        if total > self._MAX_HISTORY_CHARS:
+            raise ValueError(
+                f"Message history exceeds {self._MAX_HISTORY_CHARS} characters."
+            )
+        return self
 
 
 class GenerateScenarioRequest(BaseModel):

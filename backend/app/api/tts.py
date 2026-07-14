@@ -1,23 +1,23 @@
 """TTS (text-to-speech) endpoint — Phase 5.
 
-Calls the VOICEVOX local HTTP API in two steps (audio_query then synthesis)
-and returns the WAV audio alongside per-mora timing data extracted from the
-audio_query, so the frontend can highlight text in sync with playback.
-VOICEVOX must be running on the configured URL before this endpoint is called.
+Thin HTTP layer over the TTS provider abstraction (``app/voice/tts``). The
+provider — VOICEVOX locally, Google Cloud in the hosted demo — is selected by
+config and resolved from app state; this router only validates input, maps the
+provider's result to the wire model, and turns provider failures into 502s.
 """
 
 import base64
-import logging
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from app.config import Settings, get_settings
-from app.japanese.kana import kata_to_hira
+from app.voice.tts import SpeakerOption, TTSError, TTSProvider
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def get_tts_provider(request: Request) -> TTSProvider:
+    return request.app.state.tts_provider
 
 
 class TTSRequest(BaseModel):
@@ -26,12 +26,7 @@ class TTSRequest(BaseModel):
     speaker_id: int | None = None
 
 
-class SpeakerOption(BaseModel):
-    id: int
-    name: str
-
-
-class MoraTiming(BaseModel):
+class MoraTimingModel(BaseModel):
     """A unit of pronunciation with its hiragana reading and time range (seconds)."""
 
     text: str
@@ -40,113 +35,39 @@ class MoraTiming(BaseModel):
 
 
 class TTSResponse(BaseModel):
-    audio: str  # base64-encoded WAV
-    moras: list[MoraTiming]
-
-
-def _extract_mora_timings(query: dict) -> list[MoraTiming]:
-    """Flatten an audio_query's accent phrases into a timeline of mora readings.
-
-    Each mora's duration is its consonant + vowel length; pauses between accent
-    phrases have no reading of their own, so their duration is folded into the
-    preceding mora's end time rather than emitted as a separate entry.
-    """
-    timings: list[MoraTiming] = []
-    t = query.get("prePhonemeLength") or 0.0
-    for phrase in query["accent_phrases"]:
-        for mora in phrase["moras"]:
-            duration = (mora.get("consonant_length") or 0.0) + (mora.get("vowel_length") or 0.0)
-            timings.append(MoraTiming(text=kata_to_hira(mora["text"]), start=t, end=t + duration))
-            t += duration
-        pause = phrase.get("pause_mora")
-        if pause:
-            duration = pause.get("vowel_length") or 0.0
-            if timings:
-                timings[-1].end += duration
-            t += duration
-    return timings
+    audio: str  # base64-encoded audio
+    mime_type: str  # MIME type of the audio (e.g. "audio/wav", "audio/mpeg")
+    moras: list[MoraTimingModel]
 
 
 @router.get("/tts/speakers")
-async def list_speakers(settings: Settings = Depends(get_settings)) -> list[SpeakerOption]:
-    """Return available VOICEVOX speakers as a flat id/name list."""
-    base = settings.voicevox_base_url.rstrip("/")
+async def list_speakers(
+    provider: TTSProvider = Depends(get_tts_provider),
+) -> list[SpeakerOption]:
+    """Return the engine's selectable voices as a flat id/name list (may be empty)."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{base}/speakers")
-            resp.raise_for_status()
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"VOICEVOX is not running. Start VOICEVOX so it is available at {base}.",
-        ) from exc
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"VOICEVOX /speakers returned {exc.response.status_code}.",
-        ) from exc
-
-    raw = resp.json()
-    options: list[SpeakerOption] = []
-    for speaker in raw:
-        for style in speaker.get("styles", []):
-            options.append(
-                SpeakerOption(id=style["id"], name=f"{speaker['name']} — {style['name']}")
-            )
-    return options
+        speakers = await provider.list_speakers()
+    except TTSError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return list(speakers)
 
 
 @router.post("/tts")
 async def synthesize(
     body: TTSRequest,
-    settings: Settings = Depends(get_settings),
+    provider: TTSProvider = Depends(get_tts_provider),
 ) -> TTSResponse:
-    """Convert Japanese text to speech via VOICEVOX, returning audio plus mora timings."""
+    """Convert Japanese text to speech, returning audio plus optional mora timings."""
     if not body.text.strip():
         raise HTTPException(status_code=422, detail="Text must not be empty.")
 
-    base = settings.voicevox_base_url.rstrip("/")
-    speaker = body.speaker_id if body.speaker_id is not None else settings.voicevox_speaker
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        # Step 1: build the audio query from the text.
-        try:
-            q_resp = await client.post(
-                f"{base}/audio_query",
-                params={"text": body.text, "speaker": speaker},
-            )
-            q_resp.raise_for_status()
-        except httpx.ConnectError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=(f"VOICEVOX is not running. Start VOICEVOX so it is available at {base}."),
-            ) from exc
-        except httpx.HTTPStatusError as exc:
-            logger.warning("VOICEVOX audio_query error: %s", exc)
-            raise HTTPException(
-                status_code=502,
-                detail=f"VOICEVOX audio_query returned {exc.response.status_code}.",
-            ) from exc
-
-        query = q_resp.json()
-
-        # Step 2: synthesise audio from the query.
-        try:
-            synth_resp = await client.post(
-                f"{base}/synthesis",
-                params={"speaker": speaker},
-                content=q_resp.content,
-                headers={"Content-Type": "application/json"},
-            )
-            synth_resp.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            logger.warning("VOICEVOX synthesis error: %s", exc)
-            raise HTTPException(
-                status_code=502,
-                detail=f"VOICEVOX synthesis returned {exc.response.status_code}.",
-            ) from exc
+    try:
+        result = await provider.synthesize(body.text, body.speaker_id)
+    except TTSError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return TTSResponse(
-        audio=base64.b64encode(synth_resp.content).decode("ascii"),
-        moras=_extract_mora_timings(query),
+        audio=base64.b64encode(result.audio).decode("ascii"),
+        mime_type=result.mime_type,
+        moras=[MoraTimingModel(text=m.text, start=m.start, end=m.end) for m in result.moras],
     )
