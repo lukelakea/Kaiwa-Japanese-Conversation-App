@@ -181,15 +181,15 @@ export default function App() {
           />
 
           <div className="border-b border-border bg-surface-1 px-4 pb-2 pt-1">
-            <div className="grid grid-cols-3 items-center">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
               {/* Left */}
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Tooltip label="History">
                   <button
                     type="button"
                     onClick={() => setHistoryOpen(true)}
                     aria-label="Conversation history"
-                    className="rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
+                    className="shrink-0 rounded-lg border border-border p-1.5 text-zinc-400 transition-colors hover:border-border-strong hover:text-zinc-100"
                   >
                     <HistoryIcon className="h-4 w-4" />
                   </button>
@@ -198,7 +198,7 @@ export default function App() {
                   type="button"
                   onClick={handleReset}
                   disabled={!conversationActive}
-                  className="rounded-lg border border-accent-700/50 bg-accent-700/10 px-3 py-1.5 text-sm text-accent-300 transition-colors hover:border-accent-600/60 hover:bg-accent-700/20 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 whitespace-nowrap rounded-lg border border-accent-700/50 bg-accent-700/10 px-3 py-1.5 text-sm text-accent-300 transition-colors hover:border-accent-600/60 hover:bg-accent-700/20 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   New conversation
                 </button>

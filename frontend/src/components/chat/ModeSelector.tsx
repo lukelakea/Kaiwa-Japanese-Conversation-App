@@ -176,7 +176,9 @@ export function ModeSelector({
             variants={listStagger}
             initial="hidden"
             animate="visible"
-            className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            className={`grid w-full grid-cols-1 gap-3 sm:grid-cols-2 ${
+              ALLOW_CUSTOM_SCENARIOS ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+            }`}
           >
             <ModeCard
               label="Free Talk"

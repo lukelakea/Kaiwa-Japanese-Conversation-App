@@ -27,12 +27,12 @@ function ConnectionStatus() {
   const { status, info } = useHealth();
   const { color, label } = STATUS_DOT[status];
   return (
-    <span className="inline-flex items-center gap-1.5" title={label} aria-label={label}>
+    <span className="inline-flex shrink-0 items-center gap-1.5" title={label} aria-label={label}>
       <span
-        className={`h-2 w-2 rounded-full ${color} ${status === 'checking' ? 'animate-pulse' : ''}`}
+        className={`h-2 w-2 shrink-0 rounded-full ${color} ${status === 'checking' ? 'animate-pulse' : ''}`}
       />
       {info && (
-        <span className="hidden text-xs text-zinc-500 sm:inline">
+        <span className="hidden whitespace-nowrap text-xs text-zinc-500 sm:inline">
           {info.provider} · {info.model}
         </span>
       )}
@@ -53,22 +53,24 @@ export function Header({
   conversationActive,
 }: HeaderProps) {
   return (
-    <header className="grid grid-cols-3 items-center bg-surface-1 px-4 pb-1.5 pt-3">
+    <header className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center bg-surface-1 px-4 pb-1.5 pt-3">
       {/* Left */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onReset}
           aria-label="Back to home"
           title="Back to home"
-          className="flex items-baseline gap-2 rounded-md transition-opacity hover:opacity-80"
+          className="flex shrink-0 items-baseline gap-2 rounded-md transition-opacity hover:opacity-80"
         >
-          <span className="jp-text text-lg font-semibold text-zinc-100">会話</span>
-          <span className="text-sm tracking-wide text-zinc-500">Kaiwa</span>
+          <span className="jp-text whitespace-nowrap text-lg font-semibold text-zinc-100">
+            会話
+          </span>
+          <span className="whitespace-nowrap text-sm tracking-wide text-zinc-500">Kaiwa</span>
         </button>
         <ConnectionStatus />
         {scenarioTitle && (
-          <span className="hidden rounded-md border border-accent-500/30 bg-accent-500/10 px-2 py-0.5 text-xs text-accent-400 sm:inline">
+          <span className="hidden min-w-0 truncate rounded-md border border-accent-500/30 bg-accent-500/10 px-2 py-0.5 text-xs text-accent-400 sm:inline">
             {scenarioTitle}
           </span>
         )}
@@ -83,7 +85,7 @@ export function Header({
       </div>
 
       {/* Right */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex min-w-0 items-center justify-end gap-2">
         {onToggleAutoPlay && (
           <Tooltip label={ttsAutoPlay ? 'Auto-play on' : 'Auto-play off'}>
             <button
