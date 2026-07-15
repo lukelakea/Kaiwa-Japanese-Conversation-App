@@ -24,14 +24,15 @@ _ENDPOINT = "https://speech.googleapis.com/v1/speech:recognize"
 
 class GoogleSTTProvider(STTProvider):
     def __init__(self, api_key: str) -> None:
-        self._api_key = api_key
-        self._client = httpx.AsyncClient(timeout=30.0)
+        # The key rides in a header rather than the "?key=" query param so it
+        # never ends up in a URL — and therefore never in an exception message
+        # or a log line if a request fails.
+        self._client = httpx.AsyncClient(timeout=30.0, headers={"X-Goog-Api-Key": api_key})
 
     async def transcribe(self, audio: bytes, content_type: str | None = None) -> str:
         try:
             resp = await self._client.post(
                 _ENDPOINT,
-                params={"key": self._api_key},
                 json={
                     # WEBM_OPUS carries its sample rate in the container, so the
                     # API reads it from the header — no sampleRateHertz needed.
