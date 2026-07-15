@@ -84,7 +84,12 @@ def create_app() -> FastAPI:
     @app.get("/api/health", tags=["health"])
     @app.state.limiter.exempt
     async def health() -> dict[str, str]:
-        return {"status": "ok", "provider": settings.llm_provider, "model": settings.active_model}
+        return {
+            "status": "ok",
+            "provider": settings.llm_provider,
+            "model": settings.active_model,
+            "tts_provider": settings.tts_provider,
+        }
 
     return app
 

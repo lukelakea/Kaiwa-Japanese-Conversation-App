@@ -35,6 +35,8 @@ type Step =
 
 interface ModeSelectorProps {
   settings: ConversationSettings;
+  /** True when the backend is running the hosted cloud demo (Anthropic + Google TTS/STT). */
+  isDemo?: boolean;
   savedScenarios: SavedScenario[];
   onSaveScenario: (scenario: SavedScenario) => void;
   onDeleteScenario: (id: string) => void;
@@ -48,6 +50,7 @@ interface ModeSelectorProps {
 
 export function ModeSelector({
   settings,
+  isDemo = false,
   savedScenarios,
   onSaveScenario,
   onDeleteScenario,
@@ -207,6 +210,8 @@ export function ModeSelector({
               />
             )}
           </motion.div>
+
+          {isDemo && <DemoNotice />}
         </div>
       );
     }
@@ -440,6 +445,36 @@ export function ModeSelector({
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
+
+function DemoNotice() {
+  return (
+    <motion.div
+      variants={fadeRise}
+      className="w-full rounded-xl border border-border bg-surface-1 px-5 py-4 text-sm text-zinc-400"
+    >
+      <p>
+        This is an <span className="font-medium text-zinc-300">online demo</span> of Kaiwa,
+        running on hosted cloud AI instead of the local model the full app uses. To keep it free
+        for everyone, usage is rate-limited per visitor, and conversations live only in your
+        browser — nothing is stored on a server.
+      </p>
+      <p className="mt-2">
+        The full app runs entirely offline against a local LLM (Ollama), has no usage limits, lets
+        you pick your own voice, and includes "Design Your Own" scenarios, which are disabled here
+        for safety.{' '}
+        <a
+          href="https://github.com/lukelakea/Kaiwa-Japanese-Conversation-App"
+          target="_blank"
+          rel="noreferrer"
+          className="text-accent-400 underline decoration-accent-400/40 underline-offset-2 transition-colors hover:text-accent-300"
+        >
+          Get it on GitHub
+        </a>
+        .
+      </p>
+    </motion.div>
+  );
+}
 
 function ModeCard({
   label,
