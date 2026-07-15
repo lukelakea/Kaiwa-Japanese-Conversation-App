@@ -17,6 +17,7 @@ import { SavedGrammarContext } from './context/SavedGrammarContext';
 import { SavedVocabContext } from './context/SavedVocabContext';
 import { useAppSettings } from './hooks/useAppSettings';
 import { useConversation } from './hooks/useConversation';
+import { useHealth } from './hooks/useHealth';
 import { useSavedConversations } from './hooks/useSavedConversations';
 import { useSavedGrammar } from './hooks/useSavedGrammar';
 import { useSavedScenarios } from './hooks/useSavedScenarios';
@@ -46,6 +47,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const { settings: appSettings, update: updateAppSettings } = useAppSettings();
+  const { info: healthInfo } = useHealth();
+  const isDemo = healthInfo?.provider === 'anthropic';
 
   // null = mode picker is shown; set once the user starts a conversation.
   const [activeMode, setActiveMode] = useState<ConversationMode | null>(null);
@@ -247,6 +250,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto">
               <ModeSelector
                 settings={settings}
+                isDemo={isDemo}
                 savedScenarios={savedScenarios}
                 onSaveScenario={saveScenario}
                 onDeleteScenario={removeScenario}

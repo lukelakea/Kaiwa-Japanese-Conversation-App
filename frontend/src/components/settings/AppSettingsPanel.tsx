@@ -180,36 +180,47 @@ export function AppSettingsPanel({ open, settings, onChange, onClose }: AppSetti
                   </div>
                 </div>
 
-                <label htmlFor="tts-voice-select" className="mb-2 block text-sm text-zinc-300">
-                  VOICEVOX speaker
-                </label>
-
-                {speakersStatus === 'loading' && (
-                  <p className="text-sm text-zinc-500">Loading speakers…</p>
-                )}
-
-                {speakersStatus === 'error' && (
+                {serverInfo?.ttsProvider === 'google' ? (
                   <p className="text-sm text-zinc-600">
-                    VOICEVOX is not running — start it to choose a voice.
+                    Voice powered by Google Cloud TTS — speaker selection isn't available on this
+                    demo.
                   </p>
-                )}
+                ) : (
+                  <>
+                    <label htmlFor="tts-voice-select" className="mb-2 block text-sm text-zinc-300">
+                      VOICEVOX speaker
+                    </label>
 
-                {speakersStatus === 'idle' && speakers.length > 0 && (
-                  <select
-                    id="tts-voice-select"
-                    value={settings.ttsVoice ?? ''}
-                    onChange={(e) =>
-                      onChange({ ttsVoice: e.target.value === '' ? null : Number(e.target.value) })
-                    }
-                    className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-500/50 jp-text"
-                  >
-                    <option value="">Server default</option>
-                    {speakers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
+                    {speakersStatus === 'loading' && (
+                      <p className="text-sm text-zinc-500">Loading speakers…</p>
+                    )}
+
+                    {speakersStatus === 'error' && (
+                      <p className="text-sm text-zinc-600">
+                        VOICEVOX is not running — start it to choose a voice.
+                      </p>
+                    )}
+
+                    {speakersStatus === 'idle' && speakers.length > 0 && (
+                      <select
+                        id="tts-voice-select"
+                        value={settings.ttsVoice ?? ''}
+                        onChange={(e) =>
+                          onChange({
+                            ttsVoice: e.target.value === '' ? null : Number(e.target.value),
+                          })
+                        }
+                        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-500/50 jp-text"
+                      >
+                        <option value="">Server default</option>
+                        {speakers.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </>
                 )}
               </section>
 

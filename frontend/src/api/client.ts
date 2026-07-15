@@ -244,14 +244,20 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 export interface HealthInfo {
   provider: string;
   model: string;
+  ttsProvider: string;
 }
 
 export async function fetchHealth(): Promise<HealthInfo | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/health`);
     if (!response.ok) return null;
-    const data = (await response.json()) as { status: string; provider: string; model: string };
-    return { provider: data.provider, model: data.model };
+    const data = (await response.json()) as {
+      status: string;
+      provider: string;
+      model: string;
+      tts_provider: string;
+    };
+    return { provider: data.provider, model: data.model, ttsProvider: data.tts_provider };
   } catch {
     return null;
   }

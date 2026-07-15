@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # cost for high-volume conversation. Requires the "anthropic" extra
     # (`uv sync --extra anthropic`) and KAIWA_LLM_PROVIDER=anthropic.
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-4-6"
+    anthropic_model: str = "claude-sonnet-5"
 
     # Default sampling temperature for conversational replies.
     temperature: float = 0.7
