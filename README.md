@@ -1,5 +1,7 @@
 # Kaiwa (会話) — Japanese Conversation Practice
 
+English | [日本語](README.ja.md)
+
 A local-first Japanese conversation-practice app. Hold a natural back-and-forth
 in Japanese with an AI partner running entirely on your own machine (via
 [Ollama](https://ollama.com)) — no subscription, no required sign-up, no cloud.
@@ -44,7 +46,7 @@ in Japanese with an AI partner running entirely on your own machine (via
   tested with pytest)
 - **LLM:** Ollama (local, default) — `gemma3:27b`. Anthropic API (cloud, opt-in) — `claude-sonnet-4-6`.
 - **Japanese tooling:** [SudachiPy](https://github.com/WorksApplications/SudachiPy)
-  (tokenisation + furigana), [JMdict](https://github.com/scriptin/jmdict-simplified)
+  (tokenization + furigana), [JMdict](https://github.com/scriptin/jmdict-simplified)
   + KANJIDIC2 (dictionary), compiled into a local SQLite file.
 - **Voice:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (STT) and
   [VOICEVOX](https://voicevox.hiroshiba.jp/) (TTS).
@@ -246,7 +248,7 @@ uv run --directory backend python scripts/eval_models.py
 ## Known limitations (v1.0)
 
 - Very long sessions will eventually approach the model's context window; the
-  full history is sent each turn (no summarisation yet). Acceptable for v1.0.
+  full history is sent each turn (no summarization yet). Acceptable for v1.0.
 - Switching register *mid-conversation* shifts the next reply's tone but may be
   gradual, since the model also honors the existing conversation's register.
 - Feedback and generated-scenario quality depend on the local model's judgement;

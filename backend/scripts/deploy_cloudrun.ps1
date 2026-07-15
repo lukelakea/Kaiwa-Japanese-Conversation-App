@@ -30,6 +30,12 @@ $backendDir = Resolve-Path (Join-Path $PSScriptRoot '..')
 # min-instances 0 scales to zero when idle (free tier; first request after idle
 # takes a few seconds). max-instances 2 caps the blast radius of a traffic spike
 # alongside the app's own per-IP rate limit.
+#
+# --set-env-vars normally splits on ",", but $RateLimit ("30/minute,500/hour")
+# and a multi-origin $CorsOrigin both legitimately contain commas. The "^;^"
+# prefix tells gcloud to split on ";" instead, freeing "," to appear in values.
+$envVars = "^;^KAIWA_LLM_PROVIDER=anthropic;KAIWA_TTS_PROVIDER=google;KAIWA_STT_PROVIDER=google;KAIWA_RATE_LIMIT=$RateLimit;KAIWA_CORS_ORIGINS=$CorsOrigin"
+
 gcloud run deploy $ServiceName `
     --project $ProjectId `
     --region $Region `
@@ -39,5 +45,5 @@ gcloud run deploy $ServiceName `
     --cpu 1 `
     --min-instances 0 `
     --max-instances 2 `
-    --set-env-vars "KAIWA_LLM_PROVIDER=anthropic,KAIWA_TTS_PROVIDER=google,KAIWA_STT_PROVIDER=google,KAIWA_RATE_LIMIT=$RateLimit,KAIWA_CORS_ORIGINS=$CorsOrigin" `
+    --set-env-vars $envVars `
     --set-secrets 'KAIWA_ANTHROPIC_API_KEY=kaiwa-anthropic-api-key:latest,KAIWA_GOOGLE_CLOUD_API_KEY=kaiwa-google-cloud-api-key:latest'
