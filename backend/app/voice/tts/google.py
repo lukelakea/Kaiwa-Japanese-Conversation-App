@@ -27,9 +27,11 @@ _MAX_CHARS = 2000
 
 class GoogleTTSProvider(TTSProvider):
     def __init__(self, api_key: str, voice_name: str) -> None:
-        self._api_key = api_key
         self._voice_name = voice_name
-        self._client = httpx.AsyncClient(timeout=30.0)
+        # The key rides in a header rather than the "?key=" query param so it
+        # never ends up in a URL — and therefore never in an exception message
+        # or a log line if a request fails (see GoogleSTTProvider for the same).
+        self._client = httpx.AsyncClient(timeout=30.0, headers={"X-Goog-Api-Key": api_key})
 
     async def synthesize(self, text: str, speaker_id: int | None = None) -> TTSResult:
         if len(text) > _MAX_CHARS:
@@ -38,7 +40,6 @@ class GoogleTTSProvider(TTSProvider):
         try:
             resp = await self._client.post(
                 _ENDPOINT,
-                params={"key": self._api_key},
                 json={
                     "input": {"text": text},
                     "voice": {"languageCode": "ja-JP", "name": self._voice_name},
