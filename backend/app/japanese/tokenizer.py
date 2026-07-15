@@ -261,9 +261,16 @@ class Tokenizer:
         for morpheme in morphemes:
             surface = morpheme.surface()
             lemma = morpheme.dictionary_form()
-            reading = kata_to_hira(morpheme.reading_form())
             pos_tuple = morpheme.part_of_speech()
             pos = _POS_MAP.get(pos_tuple[0], "other")
+            # Sudachi's reading_form() for symbol/whitespace morphemes (e.g. a
+            # full-width space or punctuation mark) isn't a pronunciation — it's
+            # the dictionary's placeholder label for the category itself
+            # (キゴウ, "symbol"). Using it verbatim leaks "kigou" into furigana
+            # and romaji for characters that aren't pronounced at all.
+            reading = (
+                "" if pos in ("symbol", "whitespace") else kata_to_hira(morpheme.reading_form())
+            )
             interactive = pos in _INTERACTIVE_POS or _has_kanji(surface)
             # Conjugation form label — only useful when the surface is inflected.
             conj_raw = pos_tuple[5] if len(pos_tuple) > 5 else ""
