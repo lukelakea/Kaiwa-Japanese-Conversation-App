@@ -21,6 +21,20 @@ logger = logging.getLogger(__name__)
 
 _ENDPOINT = "https://speech.googleapis.com/v1/speech:recognize"
 
+# The browser's MediaRecorder container varies by browser (Chrome defaults to
+# WebM/Opus, Firefox often to Ogg/Opus); the frontend now requests one of these
+# explicitly, but map from the actual content type rather than assume, so a
+# mismatch fails loudly instead of silently sending the wrong encoding to Google.
+_ENCODING_BY_CONTENT_TYPE = {
+    "audio/webm": "WEBM_OPUS",
+    "audio/ogg": "OGG_OPUS",
+}
+
+
+def _encoding_for(content_type: str | None) -> str:
+    base = (content_type or "").split(";")[0].strip().lower()
+    return _ENCODING_BY_CONTENT_TYPE.get(base, "WEBM_OPUS")
+
 
 class GoogleSTTProvider(STTProvider):
     def __init__(self, api_key: str) -> None:
@@ -34,10 +48,11 @@ class GoogleSTTProvider(STTProvider):
             resp = await self._client.post(
                 _ENDPOINT,
                 json={
-                    # WEBM_OPUS carries its sample rate in the container, so the
-                    # API reads it from the header — no sampleRateHertz needed.
+                    # WEBM_OPUS/OGG_OPUS both carry their sample rate in the
+                    # container, so the API reads it from the header — no
+                    # sampleRateHertz needed.
                     "config": {
-                        "encoding": "WEBM_OPUS",
+                        "encoding": _encoding_for(content_type),
                         "languageCode": "ja-JP",
                         "enableAutomaticPunctuation": True,
                     },

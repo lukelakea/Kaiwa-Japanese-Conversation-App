@@ -145,11 +145,13 @@ export async function generateScenario(
 
 /**
  * Transcribe an audio blob to Japanese text via faster-whisper (Phase 5).
- * The browser sends WebM/Opus; the backend saves it to a temp file and runs STT.
+ * The browser records WebM/Opus or Ogg/Opus depending on what it supports; the
+ * backend reads the actual container from the upload's content type.
  */
 export async function transcribe(audio: Blob, signal?: AbortSignal): Promise<string> {
   const formData = new FormData();
-  formData.append('audio', audio, 'recording.webm');
+  const extension = audio.type.includes('ogg') ? 'ogg' : 'webm';
+  formData.append('audio', audio, `recording.${extension}`);
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/api/stt`, {

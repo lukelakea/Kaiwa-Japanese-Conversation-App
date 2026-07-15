@@ -24,6 +24,16 @@ interface UseAudioRecorderReturn {
   clearError: () => void;
 }
 
+// Preferred in order: both are what the backend's Google STT provider knows how
+// to map to a Google encoding. Without an explicit mimeType, each browser picks
+// its own default (Chrome: WebM/Opus, Firefox: often Ogg/Opus) — always naming
+// one keeps the recorded container consistent with what the backend expects.
+const PREFERRED_MIME_TYPES = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'];
+
+function pickSupportedMimeType(): string | undefined {
+  return PREFERRED_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
 export function useAudioRecorder(): UseAudioRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +51,8 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       return;
     }
 
-    const recorder = new MediaRecorder(stream);
+    const mimeType = pickSupportedMimeType();
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     chunksRef.current = [];
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
