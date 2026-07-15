@@ -54,7 +54,7 @@
 
   /* Japanese readability: roomy line height for kana/kanji mix. */
   .jp-text {
-    line-height: 1.9;
+    line-height: 2.0;
     letter-spacing: 0.01em;
   }
 
@@ -79,6 +79,7 @@
     font-size: 0.7em;
     font-weight: 400;
     letter-spacing: 0;
+    padding-bottom: 0.2em;
     color: var(--color-accent-400);
     user-select: none;
   }
@@ -91,6 +92,8 @@
 
   .jp-ruby ruby.romaji-ruby > rt {
     color: oklch(0.58 0 0);
+    padding-bottom: 0;
+    padding-top: 0.2em;
   }
 
   /* On the teal user bubble, the default accent/grey readings lose almost all
@@ -104,15 +107,15 @@
     color: oklch(1 0 0 / 0.65);
   }
 
-  /* Extra line-height when ruby annotations occupy both tiers. The base 1.9
+  /* Extra line-height when ruby annotations occupy both tiers. The base 2.0
      only leaves room for one tier; romaji-only needs space below, both needs
      space above and below. Values are unitless so they scale with text size. */
   .jp-ruby-romaji {
-    line-height: 2.8;
+    line-height: 2.95;
   }
 
   .jp-ruby-both {
-    line-height: 3.6;
+    line-height: 3.85;
   }
 
   /* Blinking caret appended to an assistant reply while it streams. */
