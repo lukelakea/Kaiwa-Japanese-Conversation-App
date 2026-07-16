@@ -58,6 +58,10 @@ export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversationStartedAt = useRef<string | null>(null);
 
+  // Remounts ModeSelector on reset so its internal step (scenario detail,
+  // custom-scenario form, etc.) snaps back to the top-level mode picker.
+  const [homeKey, setHomeKey] = useState(0);
+
   // Text restored to the input when the user rewinds their last message to
   // edit it. `key` increments on each rewind so the same text can be
   // reapplied even if it's identical to what's already in the input.
@@ -111,6 +115,7 @@ export default function App() {
     setActiveScenario(null);
     setConversationId(null);
     conversationStartedAt.current = null;
+    setHomeKey((k) => k + 1);
   }, [reset]);
 
   const handleStartFreeTalk = useCallback(() => {
@@ -228,7 +233,7 @@ export default function App() {
           </div>
 
           {conversationActive ? (
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-scroll">
               <MessageList
                 messages={messages}
                 showFurigana={showFurigana}
@@ -247,8 +252,9 @@ export default function App() {
               />
             </main>
           ) : (
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-hidden">
               <ModeSelector
+                key={homeKey}
                 settings={settings}
                 isDemo={isDemo}
                 savedScenarios={savedScenarios}

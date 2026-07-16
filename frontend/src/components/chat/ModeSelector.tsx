@@ -218,23 +218,25 @@ export function ModeSelector({
 
     if (step.name === 'scenario-list') {
       return (
-        <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 overflow-y-auto px-6 py-8">
-          <BackButton onClick={() => setStep({ name: 'mode-picker' })} />
-          <h2 className="text-lg font-semibold text-zinc-200">Choose a Scenario</h2>
-          <motion.div
-            variants={listStagger}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-          >
-            {CURATED_SCENARIOS.map((s) => (
-              <ScenarioCard
-                key={s.id}
-                scenario={s}
-                onClick={() => setStep({ name: 'scenario-detail', curated: s })}
-              />
-            ))}
-          </motion.div>
+        <div className="h-full w-full overflow-y-scroll">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 py-8">
+            <BackButton onClick={() => setStep({ name: 'mode-picker' })} />
+            <h2 className="text-lg font-semibold text-zinc-200">Choose a Scenario</h2>
+            <motion.div
+              variants={listStagger}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            >
+              {CURATED_SCENARIOS.map((s) => (
+                <ScenarioCard
+                  key={s.id}
+                  scenario={s}
+                  onClick={() => setStep({ name: 'scenario-detail', curated: s })}
+                />
+              ))}
+            </motion.div>
+          </div>
         </div>
       );
     }
@@ -307,120 +309,122 @@ export function ModeSelector({
 
     if (step.name === 'custom-setup') {
       return (
-        <div className="mx-auto flex h-full w-full max-w-lg flex-col gap-4 overflow-y-auto px-6 py-8">
-          <BackButton onClick={() => setStep({ name: 'mode-picker' })} />
-          <div>
-            <h2 className="mb-1 text-lg font-semibold text-zinc-200">Design a Scenario</h2>
-            <p className="text-sm text-zinc-500">
-              Set up who you are, who they are, and the situation. Add any extra notes the AI
-              should keep in mind.
-            </p>
-          </div>
+        <div className="h-full w-full overflow-y-scroll">
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-6 py-8">
+            <BackButton onClick={() => setStep({ name: 'mode-picker' })} />
+            <div>
+              <h2 className="mb-1 text-lg font-semibold text-zinc-200">Design a Scenario</h2>
+              <p className="text-sm text-zinc-500">
+                Set up who you are, who they are, and the situation. Add any extra notes the AI
+                should keep in mind.
+              </p>
+            </div>
 
-          {savedScenarios.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm text-zinc-400">Saved scenarios</span>
+            {savedScenarios.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                {savedScenarios.map((saved) => (
-                  <SavedScenarioRow
-                    key={saved.id}
-                    scenario={saved}
-                    isActive={saved.id === editingId}
-                    onLoad={() => loadSavedScenario(saved)}
-                    onDelete={() => handleDeleteSaved(saved.id)}
-                  />
-                ))}
+                <span className="text-sm text-zinc-400">Saved scenarios</span>
+                <div className="flex flex-col gap-1.5">
+                  {savedScenarios.map((saved) => (
+                    <SavedScenarioRow
+                      key={saved.id}
+                      scenario={saved}
+                      isActive={saved.id === editingId}
+                      onLoad={() => loadSavedScenario(saved)}
+                      onDelete={() => handleDeleteSaved(saved.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <FormField
+              label="Your role — who/what you are"
+              placeholder="e.g. A tourist who just landed in Tokyo"
+              value={customUserRole}
+              onChange={setCustomUserRole}
+            />
+            <FormField
+              label="Their role — who/what they are"
+              placeholder="e.g. A friendly station attendant"
+              value={customAiRole}
+              onChange={setCustomAiRole}
+            />
+            <FormTextArea
+              label="Setting"
+              placeholder="Describe where this takes place and what's going on"
+              value={customDescription}
+              onChange={setCustomDescription}
+            />
+            <FormField
+              label="Your goal (optional)"
+              placeholder="e.g. Convince them to give you a refund"
+              value={customGoal}
+              onChange={setCustomGoal}
+            />
+            <FormTextArea
+              label="Additional instructions (optional)"
+              placeholder="Anything else to keep in mind for this conversation, e.g. names, constraints, things to avoid"
+              value={customNotes}
+              onChange={setCustomNotes}
+            />
+            <FormField
+              label="Title (optional)"
+              placeholder="e.g. Lost at Shinjuku Station"
+              value={customTitle}
+              onChange={setCustomTitle}
+            />
+
+            <div>
+              <span className="mb-1.5 block text-sm text-zinc-400">Conversation settings</span>
+              <div className="flex flex-wrap gap-2">
+                <SettingDropdown
+                  title="Difficulty"
+                  value={customSettings.difficulty}
+                  options={DIFFICULTY_OPTIONS}
+                  onChange={(difficulty) => setCustomSettings((s) => ({ ...s, difficulty }))}
+                />
+                <SettingDropdown
+                  title="Register"
+                  value={customSettings.formality}
+                  options={FORMALITY_OPTIONS}
+                  onChange={(formality) => setCustomSettings((s) => ({ ...s, formality }))}
+                />
+                <SettingDropdown
+                  title="Initiative"
+                  value={customSettings.initiative}
+                  options={INITIATIVE_OPTIONS}
+                  onChange={(initiative) => setCustomSettings((s) => ({ ...s, initiative }))}
+                />
               </div>
             </div>
-          )}
 
-          <FormField
-            label="Your role — who/what you are"
-            placeholder="e.g. A tourist who just landed in Tokyo"
-            value={customUserRole}
-            onChange={setCustomUserRole}
-          />
-          <FormField
-            label="Their role — who/what they are"
-            placeholder="e.g. A friendly station attendant"
-            value={customAiRole}
-            onChange={setCustomAiRole}
-          />
-          <FormTextArea
-            label="Setting"
-            placeholder="Describe where this takes place and what's going on"
-            value={customDescription}
-            onChange={setCustomDescription}
-          />
-          <FormField
-            label="Your goal (optional)"
-            placeholder="e.g. Convince them to give you a refund"
-            value={customGoal}
-            onChange={setCustomGoal}
-          />
-          <FormTextArea
-            label="Additional instructions (optional)"
-            placeholder="Anything else to keep in mind for this conversation, e.g. names, constraints, things to avoid"
-            value={customNotes}
-            onChange={setCustomNotes}
-          />
-          <FormField
-            label="Title (optional)"
-            placeholder="e.g. Lost at Shinjuku Station"
-            value={customTitle}
-            onChange={setCustomTitle}
-          />
+            {customError && <p className="text-sm text-red-400">{customError}</p>}
 
-          <div>
-            <span className="mb-1.5 block text-sm text-zinc-400">Conversation settings</span>
-            <div className="flex flex-wrap gap-2">
-              <SettingDropdown
-                title="Difficulty"
-                value={customSettings.difficulty}
-                options={DIFFICULTY_OPTIONS}
-                onChange={(difficulty) => setCustomSettings((s) => ({ ...s, difficulty }))}
-              />
-              <SettingDropdown
-                title="Register"
-                value={customSettings.formality}
-                options={FORMALITY_OPTIONS}
-                onChange={(formality) => setCustomSettings((s) => ({ ...s, formality }))}
-              />
-              <SettingDropdown
-                title="Initiative"
-                value={customSettings.initiative}
-                options={INITIATIVE_OPTIONS}
-                onChange={(initiative) => setCustomSettings((s) => ({ ...s, initiative }))}
-              />
-            </div>
-          </div>
-
-          {customError && <p className="text-sm text-red-400">{customError}</p>}
-
-          <div className="flex items-center justify-end gap-2">
-            {editingId && (
+            <div className="flex items-center justify-end gap-2">
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={handleNewCustom}
+                  className="text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+                >
+                  New scenario
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleNewCustom}
-                className="text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+                onClick={handleSaveCustom}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-border-strong hover:bg-surface-2"
               >
-                New scenario
+                {editingId ? 'Update' : 'Save'}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={handleSaveCustom}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-border-strong hover:bg-surface-2"
-            >
-              {editingId ? 'Update' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={handleStartCustom}
-              className="rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-600"
-            >
-              Start Conversation
-            </button>
+              <button
+                type="button"
+                onClick={handleStartCustom}
+                className="rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-600"
+              >
+                Start Conversation
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -460,15 +464,14 @@ function DemoNotice() {
       </p>
       <p className="mt-2">
         The full app runs entirely offline against a local LLM (Ollama), has no usage limits, lets
-        you pick your own voice, and includes "Design Your Own" scenarios, which are disabled here
-        for safety.{' '}
+        you pick your own voice, and includes "Design Your Own" scenarios.{' '}
         <a
           href="https://github.com/lukelakea/Kaiwa-Japanese-Conversation-App"
           target="_blank"
           rel="noreferrer"
           className="text-accent-400 underline decoration-accent-400/40 underline-offset-2 transition-colors hover:text-accent-300"
         >
-          Get it on GitHub
+          Get the full version on GitHub
         </a>
         .
       </p>

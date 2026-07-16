@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { ApiError, requestFeedback, streamChat, tokenize, translate } from '../api/client';
+import { createTextSmoother } from '../lib/textSmoother';
 import type {
   ConversationMode,
   ConversationSettings,
@@ -139,6 +140,7 @@ export function useConversation() {
       // Accumulate the reply locally so the final text is available to tokenise
       // without re-deriving it from state.
       let full = '';
+      const smoother = createTextSmoother((chunk) => appendDelta(assistantId, chunk));
 
       try {
         await streamChat(
@@ -147,7 +149,7 @@ export function useConversation() {
             signal: controller.signal,
             onDelta: (delta) => {
               full += delta;
-              appendDelta(assistantId, delta);
+              smoother.push(delta);
             },
           },
         );
@@ -168,6 +170,7 @@ export function useConversation() {
         );
         setStatus('error');
       } finally {
+        smoother.finish();
         abortRef.current = null;
       }
     },
@@ -199,6 +202,7 @@ export function useConversation() {
       const controller = new AbortController();
       abortRef.current = controller;
       let full = '';
+      const smoother = createTextSmoother((chunk) => appendDelta(newAssistantId, chunk));
 
       try {
         await streamChat(
@@ -207,7 +211,7 @@ export function useConversation() {
             signal: controller.signal,
             onDelta: (delta) => {
               full += delta;
-              appendDelta(newAssistantId, delta);
+              smoother.push(delta);
             },
           },
         );
@@ -226,6 +230,7 @@ export function useConversation() {
         );
         setStatus('error');
       } finally {
+        smoother.finish();
         abortRef.current = null;
       }
     },
@@ -265,6 +270,7 @@ export function useConversation() {
       const controller = new AbortController();
       abortRef.current = controller;
       let full = '';
+      const smoother = createTextSmoother((chunk) => appendDelta(assistantId, chunk));
 
       try {
         await streamChat(
@@ -273,7 +279,7 @@ export function useConversation() {
             signal: controller.signal,
             onDelta: (delta) => {
               full += delta;
-              appendDelta(assistantId, delta);
+              smoother.push(delta);
             },
           },
         );
@@ -292,6 +298,7 @@ export function useConversation() {
         );
         setStatus('error');
       } finally {
+        smoother.finish();
         abortRef.current = null;
       }
     },
