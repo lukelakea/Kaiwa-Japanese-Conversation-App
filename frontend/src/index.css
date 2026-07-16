@@ -45,11 +45,22 @@
 @layer base {
   html {
     color-scheme: dark;
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
     @apply bg-surface-0 text-zinc-100 antialiased;
+    height: 100%;
+    overflow: hidden;
     font-family: var(--font-sans);
+  }
+
+  /* Scroll containers that swap between short and tall content (mode picker,
+     scenario steps, message list) always reserve the scrollbar's width, so
+     a step transition can't shift the layout by toggling the track on/off. */
+  .overflow-y-auto {
+    scrollbar-gutter: stable;
   }
 
   /* Japanese readability: roomy line height for kana/kanji mix. */
