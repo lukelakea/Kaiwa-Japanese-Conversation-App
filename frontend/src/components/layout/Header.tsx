@@ -29,10 +29,10 @@ function ConnectionStatus() {
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5" title={label} aria-label={label}>
       <span
-        className={`h-2 w-2 shrink-0 rounded-full ${color} ${status === 'checking' ? 'animate-pulse' : ''}`}
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${color} ${status === 'checking' ? 'animate-pulse' : ''}`}
       />
       {info && (
-        <span className="hidden whitespace-nowrap text-xs text-zinc-500 sm:inline">
+        <span className="hidden whitespace-nowrap text-[11px] leading-none text-zinc-500 sm:inline">
           {info.provider} · {info.model}
         </span>
       )}
@@ -61,14 +61,16 @@ export function Header({
           onClick={onReset}
           aria-label="Back to home"
           title="Back to home"
-          className="flex shrink-0 items-baseline gap-2 rounded-md transition-opacity hover:opacity-80"
+          className="flex shrink-0 flex-col items-start gap-0.5 rounded-md transition-opacity hover:opacity-80"
         >
-          <span className="jp-text whitespace-nowrap text-lg font-semibold text-zinc-100">
-            会話
+          <span className="flex items-baseline gap-2">
+            <span className="jp-text whitespace-nowrap text-lg font-semibold text-zinc-100">
+              会話
+            </span>
+            <span className="whitespace-nowrap text-sm tracking-wide text-zinc-500">Kaiwa</span>
           </span>
-          <span className="whitespace-nowrap text-sm tracking-wide text-zinc-500">Kaiwa</span>
+          <ConnectionStatus />
         </button>
-        <ConnectionStatus />
         {scenarioTitle && (
           <span className="hidden min-w-0 truncate rounded-md border border-accent-500/30 bg-accent-500/10 px-2 py-0.5 text-xs text-accent-400 sm:inline">
             {scenarioTitle}
