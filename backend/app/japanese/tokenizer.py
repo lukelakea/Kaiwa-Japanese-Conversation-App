@@ -120,6 +120,15 @@ _FUSED_PARTICLES: dict[str, str] = {
 # bounds the longest-match merge scan. Today's longest (なんか) is two morphemes.
 _MAX_FUSED_SPAN = 3
 
+# SudachiPy's dictionary entry for the standalone pronoun 何 always gives ナン as
+# its reading_form(), regardless of what follows (its lexicalized compounds —
+# 何色, 何人, 何回 — carry their own correct readings and aren't affected). But
+# なん is only right before だ/です and a handful of set phrases (なんと, なんでも);
+# elsewhere (何を, 何が, 何も, 何は…) the standalone word is なに. Rather than
+# hand-list every follower, this keys off the following token's leading kana:
+# だ/で/と are the sounds that trigger なん; everything else is なに.
+_NAN_TRIGGER_KANA = {"だ", "で", "と"}
+
 
 def _is_kanji(ch: str) -> bool:
     code = ord(ch)
@@ -183,6 +192,24 @@ def _furigana_segments(surface: str, reading: str) -> list[FuriganaSegment]:
     if trail:
         segments.append(FuriganaSegment(text=trail))
     return segments
+
+
+def _fix_nani_reading(tokens: list[Token]) -> list[Token]:
+    """Correct SudachiPy's blanket ナン reading for the standalone pronoun 何.
+
+    See ``_NAN_TRIGGER_KANA`` for why this is keyed on the next token's leading
+    kana rather than a fixed list of followers.
+    """
+    fixed: list[Token] = []
+    for i, token in enumerate(tokens):
+        if token.surface == "何" and token.pos == "pronoun" and token.reading == "なん":
+            next_kana = tokens[i + 1].surface[:1] if i + 1 < len(tokens) else ""
+            if next_kana not in _NAN_TRIGGER_KANA:
+                token = token.model_copy(
+                    update={"reading": "なに", "furigana": _furigana_segments("何", "なに")}
+                )
+        fixed.append(token)
+    return fixed
 
 
 def _merge_fused_particles(tokens: list[Token]) -> list[Token]:
@@ -297,4 +324,4 @@ class Tokenizer:
                     conjugation_type=conjugation_type,
                 )
             )
-        return _merge_fused_particles(tokens)
+        return _merge_fused_particles(_fix_nani_reading(tokens))

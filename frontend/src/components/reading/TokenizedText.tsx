@@ -54,6 +54,11 @@ export function TokenizedText({
   );
   const closeTimer = useRef<number | null>(null);
   const tokenRefs = useRef<Map<number, HTMLElement>>(new Map());
+  // Experimental: popover only shows while Shift is held. Tracks whatever
+  // token is currently under the pointer/focus so it can open the instant
+  // Shift goes down, without waiting for another pointerenter.
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const hovered = useRef<{ index: number; el: HTMLElement } | null>(null);
 
   // Inflection chains (e.g. あり+まし+た for ありました): a content word plus
   // its trailing auxiliaries, shown as one popover instead of one per token.
@@ -120,6 +125,41 @@ export function TokenizedText({
     }
     setActive({ index, anchor, chainKey: chain ? chain.start : index });
   };
+  // Called on pointerenter/focus regardless of Shift state: remembers the
+  // token so Shift-down can open it immediately, and opens it now if Shift
+  // is already held.
+  const trackHover = (index: number, el: HTMLElement) => {
+    hovered.current = { index, el };
+    if (shiftHeld) open(index, el);
+  };
+  const clearHover = () => {
+    hovered.current = null;
+    scheduleClose();
+  };
+  // Keeps the keydown/keyup listeners (registered once, below) calling into
+  // the latest render's `open` rather than a stale closure.
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Shift') return;
+      setShiftHeld(true);
+      if (hovered.current) openRef.current(hovered.current.index, hovered.current.el);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== 'Shift') return;
+      setShiftHeld(false);
+      scheduleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => cancelClose, []);
 
@@ -153,10 +193,10 @@ export function TokenizedText({
             }}
             role="button"
             tabIndex={0}
-            onPointerEnter={(e) => open(index, e.currentTarget)}
-            onPointerLeave={scheduleClose}
-            onFocus={(e) => open(index, e.currentTarget)}
-            onBlur={scheduleClose}
+            onPointerEnter={(e) => trackHover(index, e.currentTarget)}
+            onPointerLeave={clearHover}
+            onFocus={(e) => trackHover(index, e.currentTarget)}
+            onBlur={clearHover}
             onClick={() => onTokenClick?.(index)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
